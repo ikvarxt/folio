@@ -9,10 +9,13 @@ struct RenderedDocument: Sendable {
 }
 
 struct MarkdownRenderer {
+    private let preprocessor = MarkdownPreprocessor()
+
     func render(url: URL) throws -> RenderedDocument {
         let startedAt = ContinuousClock.now
         let source = try TextFileLoader.load(from: url)
-        let bodyHTML = try Down(markdownString: source.text).toHTML()
+        let preparedMarkdown = try preprocessor.preprocess(source.text)
+        let bodyHTML = try Down(markdownString: preparedMarkdown).toHTML(.unsafe)
         let elapsed = startedAt.duration(to: ContinuousClock.now)
 
         return RenderedDocument(

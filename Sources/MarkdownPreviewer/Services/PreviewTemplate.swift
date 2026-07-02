@@ -39,12 +39,18 @@ enum PreviewTemplate {
         )
     }
 
-    static func resourceText(named name: String, ext: String, subdirectory: String) -> String {
-        guard let url = Bundle.module.url(forResource: name, withExtension: ext, subdirectory: subdirectory),
-              let text = try? String(contentsOf: url) else {
-            return ""
+    static func resourceText(named name: String, ext: String, subdirectory: String? = nil) -> String {
+        let urls = [
+            subdirectory.flatMap { Bundle.module.url(forResource: name, withExtension: ext, subdirectory: $0) },
+            Bundle.module.url(forResource: name, withExtension: ext),
+        ]
+
+        for url in urls.compactMap({ $0 }) {
+            if let text = try? String(contentsOf: url) {
+                return text
+            }
         }
 
-        return text
+        return ""
     }
 }

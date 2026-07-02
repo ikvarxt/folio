@@ -21,7 +21,7 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-family: -apple-system, "SF Pro Text", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Baskerville", "Times New Roman", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -63,7 +63,7 @@ h4,
 h5,
 h6 {
   color: var(--ink);
-  font-family: "Avenir Next", -apple-system, "SF Pro Display", "PingFang SC", sans-serif;
+  font-family: "Baskerville", "Iowan Old Style", "Times New Roman", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
   line-height: 1.08;
   text-wrap: balance;
   margin-top: 1.7em;
