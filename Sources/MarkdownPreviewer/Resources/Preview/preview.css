@@ -164,14 +164,17 @@ blockquote {
 }
 
 .table-scroll {
-  width: 100%;
-  max-width: 100%;
+  box-sizing: border-box;
+  width: calc(100% + var(--content-inline-padding) + var(--content-inline-padding));
+  max-width: none;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   margin-top: 0;
   margin-bottom: 1.15rem;
-  padding-bottom: 4px;
+  margin-left: calc(0px - var(--content-inline-padding));
+  margin-right: calc(0px - var(--content-inline-padding));
+  padding: 0 var(--content-inline-padding) 4px;
 }
 
 .table-scroll table {
