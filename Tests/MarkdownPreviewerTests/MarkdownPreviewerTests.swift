@@ -65,6 +65,26 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertFalse(tree[0].collapsibleIDs.contains("c"))
     }
 
+    func testCollapseAllPreservesFirstTwoVisibleOutlineLevels() {
+        let items = [
+            TableOfContentsItem(id: "a", title: "A", level: 1),
+            TableOfContentsItem(id: "b", title: "B", level: 2),
+            TableOfContentsItem(id: "c", title: "C", level: 3),
+            TableOfContentsItem(id: "d", title: "D", level: 2),
+            TableOfContentsItem(id: "e", title: "E", level: 3),
+            TableOfContentsItem(id: "f", title: "F", level: 1),
+            TableOfContentsItem(id: "g", title: "G", level: 2),
+            TableOfContentsItem(id: "h", title: "H", level: 3),
+        ]
+
+        let tree = TableOfContentsNode.tree(from: items)
+        let collapsedIDs = TableOfContentsNode.collapsedIDs(in: tree, preservingVisibleDepth: 2)
+
+        XCTAssertEqual(collapsedIDs, ["b", "d", "g"])
+        XCTAssertFalse(collapsedIDs.contains("a"))
+        XCTAssertFalse(collapsedIDs.contains("f"))
+    }
+
     @MainActor
     func testDocumentTabMarksExternalFileChangesForReload() throws {
         let url = URL(fileURLWithPath: NSTemporaryDirectory())

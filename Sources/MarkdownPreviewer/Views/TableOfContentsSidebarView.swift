@@ -18,6 +18,8 @@ struct TableOfContentsSidebarView: View {
 }
 
 private struct ObservedTOCShell: View {
+    private let minimumVisibleDepthOnCollapseAll = 2
+
     @ObservedObject var tab: DocumentTab
     let onSelect: (String) -> Void
     @State private var collapsedNodeIDs: Set<String> = []
@@ -54,7 +56,10 @@ private struct ObservedTOCShell: View {
                     .disabled(collapsibleIDs.isEmpty)
 
                     Button("Collapse all") {
-                        collapsedNodeIDs = collapsibleIDs
+                        collapsedNodeIDs = TableOfContentsNode.collapsedIDs(
+                            in: outlineTree,
+                            preservingVisibleDepth: minimumVisibleDepthOnCollapseAll
+                        )
                     }
                     .buttonStyle(OutlineActionButtonStyle())
                     .disabled(collapsibleIDs.isEmpty)

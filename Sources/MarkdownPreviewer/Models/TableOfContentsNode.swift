@@ -24,6 +24,31 @@ struct TableOfContentsNode: Identifiable, Equatable {
         return ids
     }
 
+    static func collapsedIDs(
+        in nodes: [TableOfContentsNode],
+        preservingVisibleDepth visibleDepth: Int
+    ) -> Set<String> {
+        let deepestExpandedDepth = max(visibleDepth - 1, 0)
+
+        func collect(from node: TableOfContentsNode, depth: Int) -> Set<String> {
+            guard node.hasChildren else {
+                return []
+            }
+
+            if depth >= deepestExpandedDepth {
+                return [node.id]
+            }
+
+            return node.children.reduce(into: Set<String>()) { partial, child in
+                partial.formUnion(collect(from: child, depth: depth + 1))
+            }
+        }
+
+        return nodes.reduce(into: Set<String>()) { partial, node in
+            partial.formUnion(collect(from: node, depth: 0))
+        }
+    }
+
     static func tree(from items: [TableOfContentsItem]) -> [TableOfContentsNode] {
         final class MutableNode {
             let item: TableOfContentsItem
