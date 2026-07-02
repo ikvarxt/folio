@@ -56,6 +56,24 @@
     });
   }
 
+  function setupTableScrollbars() {
+    const wrappers = document.querySelectorAll(".table-scroll");
+
+    wrappers.forEach((wrapper) => {
+      let hideTimer = 0;
+
+      const revealScrollbar = () => {
+        wrapper.classList.add("is-scrolling");
+        window.clearTimeout(hideTimer);
+        hideTimer = window.setTimeout(() => {
+          wrapper.classList.remove("is-scrolling");
+        }, 520);
+      };
+
+      wrapper.addEventListener("scroll", revealScrollbar, { passive: true });
+    });
+  }
+
   function buildTableOfContents() {
     slugCounts.clear();
 
@@ -126,6 +144,7 @@
 
   async function boot() {
     wrapTables();
+    setupTableScrollbars();
     buildTableOfContents();
     setupScrollTracking();
     await renderMermaid();

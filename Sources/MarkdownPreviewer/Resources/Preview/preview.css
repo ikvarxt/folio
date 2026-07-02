@@ -192,13 +192,23 @@ blockquote {
 }
 
 .table-scroll::-webkit-scrollbar-thumb {
-  background: rgba(124, 103, 71, 0.28);
+  background: transparent;
   border-radius: 999px;
+  transition: background 0.16s ease;
 }
 
 .table-scroll::-webkit-scrollbar-track {
-  background: rgba(124, 103, 71, 0.08);
+  background: transparent;
   border-radius: 999px;
+  transition: background 0.16s ease;
+}
+
+.table-scroll.is-scrolling::-webkit-scrollbar-thumb {
+  background: rgba(124, 103, 71, 0.28);
+}
+
+.table-scroll.is-scrolling::-webkit-scrollbar-track {
+  background: rgba(124, 103, 71, 0.08);
 }
 
 th,
