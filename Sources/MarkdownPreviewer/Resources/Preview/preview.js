@@ -41,6 +41,21 @@
     return nodes;
   }
 
+  function wrapTables() {
+    const tables = document.querySelectorAll("table");
+
+    tables.forEach((table) => {
+      if (table.parentElement?.classList.contains("table-scroll")) {
+        return;
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-scroll";
+      table.replaceWith(wrapper);
+      wrapper.appendChild(table);
+    });
+  }
+
   function buildTableOfContents() {
     slugCounts.clear();
 
@@ -110,6 +125,7 @@
   }
 
   async function boot() {
+    wrapTables();
     buildTableOfContents();
     setupScrollTracking();
     await renderMermaid();

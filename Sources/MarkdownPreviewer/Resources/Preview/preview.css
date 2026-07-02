@@ -10,7 +10,8 @@
   --accent: oklch(0.58 0.12 45);
   --accent-soft: oklch(0.94 0.03 70);
   --radius: 18px;
-  --content-width: min(860px, calc(100vw - 96px));
+  --content-inline-padding: clamp(24px, 2.9vw, 40px);
+  --content-block-padding: clamp(30px, 3.2vw, 46px);
 }
 
 html {
@@ -22,24 +23,26 @@ body {
   background: var(--canvas);
   color: var(--ink);
   font-family: "Iowan Old Style", "Palatino Linotype", "Baskerville", "Times New Roman", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 .canvas {
-  padding: 34px 40px 60px;
+  padding: 18px 18px 34px;
 }
 
 .document {
-  width: var(--content-width);
+  width: auto;
+  max-width: none;
   margin: 0 auto;
   background: var(--paper);
   border-radius: var(--radius);
   box-shadow:
     0 1px 3px rgba(36, 30, 22, 0.11),
     0 18px 34px rgba(36, 30, 22, 0.04);
-  padding: 42px 48px 56px;
+  padding: var(--content-block-padding) var(--content-inline-padding) calc(var(--content-block-padding) + 8px);
 }
 
 .error-state {
@@ -106,7 +109,6 @@ p,
 ul,
 ol,
 blockquote,
-table,
 pre {
   margin-top: 0;
   margin-bottom: 1.15rem;
@@ -161,13 +163,39 @@ blockquote {
   box-shadow: inset 1px 0 0 rgba(124, 103, 71, 0.18);
 }
 
-table {
+.table-scroll {
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  margin-top: 0;
+  margin-bottom: 1.15rem;
+  padding-bottom: 4px;
+}
+
+.table-scroll table {
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
-  overflow: hidden;
   border-radius: 14px;
   border-style: hidden;
   box-shadow: 0 0 0 1px rgba(124, 103, 71, 0.12);
+  margin-bottom: 0;
+}
+
+.table-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(124, 103, 71, 0.28);
+  border-radius: 999px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: rgba(124, 103, 71, 0.08);
+  border-radius: 999px;
 }
 
 th,
@@ -175,6 +203,7 @@ td {
   text-align: left;
   padding: 12px 14px;
   vertical-align: top;
+  min-width: 8.5rem;
 }
 
 thead {
@@ -227,11 +256,11 @@ li + li {
 
 @media (max-width: 900px) {
   .canvas {
-    padding: 24px;
+    padding: 12px;
   }
 
   .document {
     width: auto;
-    padding: 28px 24px 36px;
+    padding: 24px 20px 32px;
   }
 }

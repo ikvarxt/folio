@@ -45,4 +45,23 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertFalse(processed.contains("<table>"))
         XCTAssertTrue(processed.contains("| not | a | table |"))
     }
+
+    func testTableOfContentsTreePreservesHeadingHierarchy() {
+        let items = [
+            TableOfContentsItem(id: "a", title: "A", level: 1),
+            TableOfContentsItem(id: "b", title: "B", level: 2),
+            TableOfContentsItem(id: "c", title: "C", level: 3),
+            TableOfContentsItem(id: "d", title: "D", level: 2),
+            TableOfContentsItem(id: "e", title: "E", level: 1),
+        ]
+
+        let tree = TableOfContentsNode.tree(from: items)
+
+        XCTAssertEqual(tree.map(\.id), ["a", "e"])
+        XCTAssertEqual(tree[0].children.map(\.id), ["b", "d"])
+        XCTAssertEqual(tree[0].children[0].children.map(\.id), ["c"])
+        XCTAssertTrue(tree[0].collapsibleIDs.contains("a"))
+        XCTAssertTrue(tree[0].collapsibleIDs.contains("b"))
+        XCTAssertFalse(tree[0].collapsibleIDs.contains("c"))
+    }
 }
