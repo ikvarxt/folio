@@ -4,6 +4,13 @@ struct AppCommands: Commands {
     @ObservedObject var controller: AppController
 
     var body: some Commands {
+        CommandGroup(replacing: .undoRedo) {
+            Button(controller.isZenModeEnabled ? "Exit Zen Mode" : "Enter Zen Mode") {
+                controller.toggleZenMode()
+            }
+            .keyboardShortcut("z", modifiers: [.command])
+        }
+
         CommandGroup(after: .newItem) {
             Button("Open Markdown Files…") {
                 controller.openPanel()
@@ -22,6 +29,12 @@ struct AppCommands: Commands {
                 controller.revealSelectedInFinder()
             }
             .disabled(controller.selectedTab == nil)
+
+            Divider()
+
+            Button(controller.isZenModeEnabled ? "Exit Zen Mode" : "Enter Zen Mode") {
+                controller.toggleZenMode()
+            }
 
             Divider()
 

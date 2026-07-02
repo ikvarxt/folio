@@ -8,6 +8,7 @@ final class AppController: ObservableObject {
 
     @Published private(set) var tabs: [DocumentTab] = []
     @Published var selectedTabID: DocumentTab.ID?
+    @Published private(set) var isZenModeEnabled = false
 
     private let renderer = MarkdownRenderer()
     private var renderTasks: [DocumentTab.ID: Task<Void, Never>] = [:]
@@ -116,6 +117,14 @@ final class AppController: ObservableObject {
         }
 
         NSWorkspace.shared.activateFileViewerSelecting([selectedTab.url])
+    }
+
+    func toggleZenMode() {
+        isZenModeEnabled.toggle()
+    }
+
+    func setZenMode(_ isEnabled: Bool) {
+        isZenModeEnabled = isEnabled
     }
 
     func updateTableOfContents(_ items: [TableOfContentsItem], for tabID: DocumentTab.ID) {

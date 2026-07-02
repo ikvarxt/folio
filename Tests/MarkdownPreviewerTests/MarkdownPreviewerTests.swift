@@ -64,4 +64,21 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertTrue(tree[0].collapsibleIDs.contains("b"))
         XCTAssertFalse(tree[0].collapsibleIDs.contains("c"))
     }
+
+    @MainActor
+    func testZenModeToggleUpdatesControllerState() {
+        let controller = AppController.shared
+        let originalValue = controller.isZenModeEnabled
+
+        defer {
+            controller.setZenMode(originalValue)
+        }
+
+        controller.setZenMode(false)
+        controller.toggleZenMode()
+        XCTAssertTrue(controller.isZenModeEnabled)
+
+        controller.toggleZenMode()
+        XCTAssertFalse(controller.isZenModeEnabled)
+    }
 }

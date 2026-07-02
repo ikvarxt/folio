@@ -29,10 +29,19 @@ struct PreviewPaneView: View {
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(Theme.ink)
             Spacer()
+
+            zenButton
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
         .background(Theme.panelSurface)
+    }
+
+    private var zenButton: some View {
+        Button(action: controller.toggleZenMode) {
+            Text(controller.isZenModeEnabled ? "Exit Zen" : "Zen")
+        }
+        .buttonStyle(ToolbarCapsuleButtonStyle())
     }
 }
 
@@ -61,6 +70,11 @@ private struct ObservedPreviewSurface: View {
 
                 Button(action: controller.reloadSelectedTab) {
                     Label("Reload", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(ToolbarCapsuleButtonStyle())
+
+                Button(action: controller.toggleZenMode) {
+                    Text(controller.isZenModeEnabled ? "Exit Zen" : "Zen")
                 }
                 .buttonStyle(ToolbarCapsuleButtonStyle())
             }
