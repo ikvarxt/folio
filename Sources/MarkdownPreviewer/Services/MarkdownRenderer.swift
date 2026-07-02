@@ -6,6 +6,7 @@ struct RenderedDocument: Sendable {
     let byteCount: Int
     let lineCount: Int
     let renderDuration: TimeInterval
+    let fileVersion: FileVersionSnapshot
 }
 
 struct MarkdownRenderer {
@@ -22,7 +23,8 @@ struct MarkdownRenderer {
             html: PreviewTemplate.makeDocumentHTML(title: url.lastPathComponent, bodyHTML: bodyHTML),
             byteCount: source.byteCount,
             lineCount: source.lineCount,
-            renderDuration: elapsed.timeInterval
+            renderDuration: elapsed.timeInterval,
+            fileVersion: source.fileVersion
         )
     }
 }

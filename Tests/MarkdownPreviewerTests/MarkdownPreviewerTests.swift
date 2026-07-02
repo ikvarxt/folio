@@ -66,6 +66,56 @@ final class MarkdownPreviewerTests: XCTestCase {
     }
 
     @MainActor
+    func testDocumentTabMarksExternalFileChangesForReload() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try "# Draft".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let tab = DocumentTab(url: url)
+        let initialVersion = FileVersionSnapshot.capture(for: url)
+
+        tab.applyRender(
+            html: "<p>Draft</p>",
+            metadata: .init(byteCount: 7, lineCount: 1, renderDuration: 0.001),
+            fileVersion: initialVersion
+        )
+        XCTAssertEqual(tab.fileSyncStatus, .upToDate)
+
+        try "# Draft updated".write(to: url, atomically: true, encoding: .utf8)
+        tab.updateFileSyncStatus(using: FileVersionSnapshot.capture(for: url))
+
+        XCTAssertEqual(tab.fileSyncStatus, .changedOnDisk)
+        XCTAssertTrue(tab.needsReloadPrompt)
+    }
+
+    @MainActor
+    func testDocumentTabMarksMissingFilesForReload() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try "# Draft".write(to: url, atomically: true, encoding: .utf8)
+
+        let tab = DocumentTab(url: url)
+        let initialVersion = FileVersionSnapshot.capture(for: url)
+
+        tab.applyRender(
+            html: "<p>Draft</p>",
+            metadata: .init(byteCount: 7, lineCount: 1, renderDuration: 0.001),
+            fileVersion: initialVersion
+        )
+
+        try FileManager.default.removeItem(at: url)
+        tab.updateFileSyncStatus(using: FileVersionSnapshot.capture(for: url))
+
+        XCTAssertEqual(tab.fileSyncStatus, .missingFromDisk)
+        XCTAssertTrue(tab.needsReloadPrompt)
+    }
+
+    @MainActor
     func testZenModeToggleUpdatesControllerState() {
         let controller = AppController.shared
         let originalValue = controller.isZenModeEnabled

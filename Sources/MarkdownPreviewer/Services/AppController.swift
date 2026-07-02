@@ -4,6 +4,11 @@ import UniformTypeIdentifiers
 
 @MainActor
 final class AppController: ObservableObject {
+    private struct OpenTabProbe: Sendable {
+        let id: DocumentTab.ID
+        let url: URL
+    }
+
     static let shared = AppController()
 
     @Published private(set) var tabs: [DocumentTab] = []
@@ -12,9 +17,16 @@ final class AppController: ObservableObject {
 
     private let renderer = MarkdownRenderer()
     private var renderTasks: [DocumentTab.ID: Task<Void, Never>] = [:]
+    private var fileVersionMonitorTask: Task<Void, Never>?
     private var didLoadLaunchArguments = false
 
-    private init() {}
+    private init() {
+        startFileVersionMonitoring()
+    }
+
+    deinit {
+        fileVersionMonitorTask?.cancel()
+    }
 
     var selectedTab: DocumentTab? {
         tabs.first(where: { $0.id == selectedTabID })
@@ -178,11 +190,14 @@ final class AppController: ObservableObject {
                             byteCount: rendered.byteCount,
                             lineCount: rendered.lineCount,
                             renderDuration: rendered.renderDuration
-                        )
+                        ),
+                        fileVersion: rendered.fileVersion
                     )
                 }
             } catch is CancellationError {
             } catch {
+                let fileVersion = FileVersionSnapshot.capture(for: url)
+
                 await MainActor.run {
                     guard let currentTab = self.tabs.first(where: { $0.id == tabID }) else {
                         return
@@ -193,7 +208,8 @@ final class AppController: ObservableObject {
                         fallbackHTML: PreviewTemplate.makeErrorHTML(
                             title: currentTab.title,
                             message: error.localizedDescription
-                        )
+                        ),
+                        fileVersion: fileVersion
                     )
                 }
             }
@@ -201,6 +217,47 @@ final class AppController: ObservableObject {
             await MainActor.run {
                 self.renderTasks[tabID] = nil
             }
+        }
+    }
+
+    private func startFileVersionMonitoring() {
+        fileVersionMonitorTask?.cancel()
+
+        fileVersionMonitorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else {
+                    return
+                }
+
+                let probes = self.tabs.map { OpenTabProbe(id: $0.id, url: $0.url) }
+
+                if !probes.isEmpty {
+                    let snapshots = await Task.detached(priority: .utility) { () -> [DocumentTab.ID: FileVersionSnapshot] in
+                        var results: [DocumentTab.ID: FileVersionSnapshot] = [:]
+                        results.reserveCapacity(probes.count)
+
+                        for probe in probes {
+                            results[probe.id] = FileVersionSnapshot.capture(for: probe.url)
+                        }
+
+                        return results
+                    }.value
+
+                    self.applyFileVersionSnapshots(snapshots)
+                }
+
+                try? await Task.sleep(for: probes.isEmpty ? .seconds(2) : .seconds(1))
+            }
+        }
+    }
+
+    private func applyFileVersionSnapshots(_ snapshots: [DocumentTab.ID: FileVersionSnapshot]) {
+        for tab in tabs {
+            guard let snapshot = snapshots[tab.id] else {
+                continue
+            }
+
+            tab.updateFileSyncStatus(using: snapshot)
         }
     }
 }

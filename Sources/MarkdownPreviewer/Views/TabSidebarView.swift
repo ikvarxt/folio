@@ -101,10 +101,16 @@ private struct TabRowView: View {
         HStack(spacing: 10) {
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(tab.title)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(1)
+                    HStack(spacing: 8) {
+                        Text(tab.title)
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(1)
+
+                        if tab.needsReloadPrompt {
+                            FileSyncIndicatorLight(status: tab.fileSyncStatus)
+                        }
+                    }
                     Text(tab.subtitle)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.mutedInk)

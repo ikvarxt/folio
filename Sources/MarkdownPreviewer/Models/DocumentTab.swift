@@ -2,6 +2,12 @@ import Foundation
 
 @MainActor
 final class DocumentTab: ObservableObject, Identifiable {
+    enum FileSyncStatus: Equatable {
+        case upToDate
+        case changedOnDisk
+        case missingFromDisk
+    }
+
     struct RenderMetadata: Sendable {
         let byteCount: Int
         let lineCount: Int
@@ -24,8 +30,11 @@ final class DocumentTab: ObservableObject, Identifiable {
     @Published private(set) var errorMessage: String?
     @Published private(set) var isLoading = false
     @Published private(set) var renderRevision = 0
+    @Published private(set) var fileSyncStatus: FileSyncStatus = .upToDate
     @Published var savedScrollPosition: Double = 0
     @Published var scrollRequest: ScrollRequest?
+
+    private var lastRenderedFileVersion: FileVersionSnapshot?
 
     init(url: URL) {
         self.url = url.standardizedFileURL
@@ -49,27 +58,35 @@ final class DocumentTab: ObservableObject, Identifiable {
         return "\(size)  •  \(lines) lines  •  \(time)"
     }
 
+    var needsReloadPrompt: Bool {
+        fileSyncStatus != .upToDate
+    }
+
     func beginLoading() {
         isLoading = true
         errorMessage = nil
     }
 
-    func applyRender(html: String, metadata: RenderMetadata) {
+    func applyRender(html: String, metadata: RenderMetadata, fileVersion: FileVersionSnapshot) {
         renderedHTML = html
         renderMetadata = metadata
         tableOfContents = []
         errorMessage = nil
         isLoading = false
+        lastRenderedFileVersion = fileVersion
+        fileSyncStatus = .upToDate
         renderRevision += 1
     }
 
-    func applyError(_ message: String, fallbackHTML: String? = nil) {
+    func applyError(_ message: String, fallbackHTML: String? = nil, fileVersion: FileVersionSnapshot? = nil) {
         errorMessage = message
         if let fallbackHTML {
             renderedHTML = fallbackHTML
         }
         tableOfContents = []
         isLoading = false
+        lastRenderedFileVersion = fileVersion
+        fileSyncStatus = .upToDate
         renderRevision += 1
     }
 
@@ -79,5 +96,18 @@ final class DocumentTab: ObservableObject, Identifiable {
 
     func requestScroll(to anchorID: String) {
         scrollRequest = ScrollRequest(anchorID: anchorID)
+    }
+
+    func updateFileSyncStatus(using latestVersion: FileVersionSnapshot) {
+        guard !isLoading, let lastRenderedFileVersion else {
+            return
+        }
+
+        if latestVersion == lastRenderedFileVersion {
+            fileSyncStatus = .upToDate
+            return
+        }
+
+        fileSyncStatus = latestVersion.fileExists ? .changedOnDisk : .missingFromDisk
     }
 }

@@ -5,6 +5,7 @@ enum TextFileLoader {
         let text: String
         let byteCount: Int
         let lineCount: Int
+        let fileVersion: FileVersionSnapshot
     }
 
     static func load(from url: URL) throws -> LoadedText {
@@ -19,7 +20,8 @@ enum TextFileLoader {
         return LoadedText(
             text: text,
             byteCount: data.count,
-            lineCount: lineCount
+            lineCount: lineCount,
+            fileVersion: FileVersionSnapshot.capture(for: url)
         )
     }
 

@@ -19,7 +19,7 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Preview") {
-            Button("Reload Current Tab") {
+            Button(controller.selectedTab?.needsReloadPrompt == true ? "Reload Updated File" : "Reload Current Tab") {
                 controller.reloadSelectedTab()
             }
             .keyboardShortcut("r", modifiers: [.command])
