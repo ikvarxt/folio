@@ -170,45 +170,37 @@ blockquote {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   margin-top: 0;
   margin-bottom: 1.15rem;
   margin-left: calc(0px - var(--content-inline-padding));
   margin-right: calc(0px - var(--content-inline-padding));
-  padding: 0 var(--content-inline-padding) 4px;
+  padding: 0 var(--content-inline-padding);
+}
+
+.table-frame {
+  width: max-content;
+  min-width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(124, 103, 71, 0.12);
+  background: var(--paper);
 }
 
 .table-scroll table {
   width: max-content;
   min-width: 100%;
-  border-collapse: collapse;
-  border-radius: 14px;
-  border-style: hidden;
-  box-shadow: 0 0 0 1px rgba(124, 103, 71, 0.12);
+  border-collapse: separate;
+  border-spacing: 0;
   margin-bottom: 0;
+  background: var(--paper);
 }
 
 .table-scroll::-webkit-scrollbar {
-  height: 10px;
-}
-
-.table-scroll::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 999px;
-  transition: background 0.16s ease;
-}
-
-.table-scroll::-webkit-scrollbar-track {
-  background: transparent;
-  border-radius: 999px;
-  transition: background 0.16s ease;
-}
-
-.table-scroll.is-scrolling::-webkit-scrollbar-thumb {
-  background: rgba(124, 103, 71, 0.28);
-}
-
-.table-scroll.is-scrolling::-webkit-scrollbar-track {
-  background: rgba(124, 103, 71, 0.08);
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 th,

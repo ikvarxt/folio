@@ -45,32 +45,19 @@
     const tables = document.querySelectorAll("table");
 
     tables.forEach((table) => {
-      if (table.parentElement?.classList.contains("table-scroll")) {
+      if (table.closest(".table-scroll")) {
         return;
       }
 
-      const wrapper = document.createElement("div");
-      wrapper.className = "table-scroll";
-      table.replaceWith(wrapper);
-      wrapper.appendChild(table);
-    });
-  }
+      const scrollWrapper = document.createElement("div");
+      scrollWrapper.className = "table-scroll";
 
-  function setupTableScrollbars() {
-    const wrappers = document.querySelectorAll(".table-scroll");
+      const frame = document.createElement("div");
+      frame.className = "table-frame";
 
-    wrappers.forEach((wrapper) => {
-      let hideTimer = 0;
-
-      const revealScrollbar = () => {
-        wrapper.classList.add("is-scrolling");
-        window.clearTimeout(hideTimer);
-        hideTimer = window.setTimeout(() => {
-          wrapper.classList.remove("is-scrolling");
-        }, 520);
-      };
-
-      wrapper.addEventListener("scroll", revealScrollbar, { passive: true });
+      table.replaceWith(scrollWrapper);
+      scrollWrapper.appendChild(frame);
+      frame.appendChild(table);
     });
   }
 
@@ -144,7 +131,6 @@
 
   async function boot() {
     wrapTables();
-    setupTableScrollbars();
     buildTableOfContents();
     setupScrollTracking();
     await renderMermaid();
