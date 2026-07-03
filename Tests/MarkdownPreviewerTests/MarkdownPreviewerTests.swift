@@ -6,6 +6,19 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertFalse(PreviewTemplate.resourceText(named: "preview", ext: "css", subdirectory: "Preview").isEmpty)
         XCTAssertFalse(PreviewTemplate.resourceText(named: "preview", ext: "js", subdirectory: "Preview").isEmpty)
         XCTAssertFalse(PreviewTemplate.resourceText(named: "mermaid.min", ext: "js", subdirectory: "Vendor").isEmpty)
+        XCTAssertFalse(PreviewTemplate.resourceText(named: "highlight", ext: "js", subdirectory: "Vendor").isEmpty)
+        XCTAssertFalse(PreviewTemplate.resourceText(named: "highlight", ext: "css", subdirectory: "Vendor").isEmpty)
+    }
+
+    func testPreviewTemplateInlinesHighlightTheme() {
+        let highlightCSS = PreviewTemplate.resourceText(named: "highlight", ext: "css", subdirectory: "Vendor")
+        let html = PreviewTemplate.makeDocumentHTML(
+            title: "Demo",
+            bodyHTML: "<pre><code class=\"language-swift\">let value = 1</code></pre>"
+        )
+
+        XCTAssertTrue(html.contains(highlightCSS))
+        XCTAssertTrue(html.contains("language-swift"))
     }
 
     func testRendererOutputsHTMLTableForPipeTableMarkdown() throws {
@@ -30,6 +43,35 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertTrue(rendered.html.contains("<table>"))
         XCTAssertTrue(rendered.html.contains("<thead>"))
         XCTAssertTrue(rendered.html.contains("<td style=\"text-align: right;\">2</td>"))
+    }
+
+    func testRendererPreservesLanguageClassesForFencedCodeBlocks() throws {
+        let markdown = """
+        ```swift
+        let answer = 42
+        ```
+
+        ```react
+        export const App = () => <section>Hello</section>;
+        ```
+
+        ```kotlin
+        val enabled = true
+        ```
+        """
+
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try markdown.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rendered = try MarkdownRenderer().render(url: url)
+
+        XCTAssertTrue(rendered.html.contains("class=\"language-swift\""))
+        XCTAssertTrue(rendered.html.contains("class=\"language-react\""))
+        XCTAssertTrue(rendered.html.contains("class=\"language-kotlin\""))
     }
 
     func testTablePreprocessorLeavesCodeFencesUntouched() throws {

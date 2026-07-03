@@ -5,6 +5,17 @@ enum PreviewTemplate {
         resourceText(named: "preview", ext: "css", subdirectory: "Preview")
     }()
 
+    private static let highlightCSS = {
+        resourceText(named: "highlight", ext: "css", subdirectory: "Vendor")
+    }()
+
+    private static let documentCSS = [
+        highlightCSS,
+        previewCSS,
+    ]
+    .filter { !$0.isEmpty }
+    .joined(separator: "\n")
+
     static func makeDocumentHTML(title: String, bodyHTML: String) -> String {
         """
         <!doctype html>
@@ -13,7 +24,7 @@ enum PreviewTemplate {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>\(title.htmlEscaped)</title>
-          <style>\(previewCSS)</style>
+          <style>\(documentCSS)</style>
         </head>
         <body>
           <div class="canvas">

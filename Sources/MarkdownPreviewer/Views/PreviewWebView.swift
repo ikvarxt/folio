@@ -43,6 +43,12 @@ struct PreviewWebView: NSViewRepresentable {
                 forMainFrameOnly: true
             )
 
+            let highlightScript = WKUserScript(
+                source: PreviewTemplate.resourceText(named: "highlight", ext: "js", subdirectory: "Vendor"),
+                injectionTime: .atDocumentEnd,
+                forMainFrameOnly: true
+            )
+
             let bridgeScript = WKUserScript(
                 source: PreviewTemplate.resourceText(named: "preview", ext: "js", subdirectory: "Preview"),
                 injectionTime: .atDocumentEnd,
@@ -50,6 +56,7 @@ struct PreviewWebView: NSViewRepresentable {
             )
 
             userContentController.addUserScript(mermaidScript)
+            userContentController.addUserScript(highlightScript)
             userContentController.addUserScript(bridgeScript)
 
             let configuration = WKWebViewConfiguration()

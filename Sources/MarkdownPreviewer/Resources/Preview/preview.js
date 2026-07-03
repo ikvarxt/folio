@@ -1,6 +1,12 @@
 (function () {
   const tocHandler = window.webkit?.messageHandlers?.tableOfContents;
   const scrollHandler = window.webkit?.messageHandlers?.scrollState;
+  const highlightAliases = new Map([
+    ["react", "jsx"],
+    ["javascriptreact", "jsx"],
+    ["typescriptreact", "tsx"],
+    ["shell", "bash"],
+  ]);
 
   const slugCounts = new Map();
   let scrollScheduled = false;
@@ -39,6 +45,62 @@
     });
 
     return nodes;
+  }
+
+  function extractLanguageClass(block) {
+    return Array.from(block.classList).find((className) => (
+      className.startsWith("language-") || className.startsWith("lang-")
+    ));
+  }
+
+  function resolveHighlightLanguage(block) {
+    const languageClass = extractLanguageClass(block);
+    if (!languageClass) {
+      return null;
+    }
+
+    const rawLanguage = languageClass
+      .replace(/^language-/, "")
+      .replace(/^lang-/, "")
+      .toLowerCase();
+
+    return highlightAliases.get(rawLanguage) || rawLanguage;
+  }
+
+  function nextFrame() {
+    return new Promise((resolve) => {
+      window.requestAnimationFrame(() => {
+        resolve();
+      });
+    });
+  }
+
+  async function highlightCodeBlocks() {
+    if (!window.hljs) {
+      return;
+    }
+
+    const blocks = Array.from(document.querySelectorAll("pre > code[class*='language-'], pre > code[class*='lang-']"));
+
+    for (const [index, block] of blocks.entries()) {
+      const language = resolveHighlightLanguage(block);
+      if (!language || language === "mermaid" || !window.hljs.getLanguage(language)) {
+        continue;
+      }
+
+      block.classList.add(`language-${language}`);
+      delete block.dataset.highlighted;
+
+      try {
+        window.hljs.highlightElement(block);
+      } catch (error) {
+        continue;
+      }
+
+      if (blocks.length > 6 && index % 3 === 2) {
+        await nextFrame();
+      }
+    }
   }
 
   function wrapTables() {
@@ -105,8 +167,7 @@
     window.addEventListener("scroll", reportScroll, { passive: true });
   }
 
-  async function renderMermaid() {
-    const nodes = replaceMermaidBlocks();
+  async function renderMermaid(nodes) {
     if (!nodes.length || !window.mermaid) {
       return;
     }
@@ -130,10 +191,12 @@
   }
 
   async function boot() {
+    const mermaidNodes = replaceMermaidBlocks();
     wrapTables();
     buildTableOfContents();
     setupScrollTracking();
-    await renderMermaid();
+    await highlightCodeBlocks();
+    await renderMermaid(mermaidNodes);
     reportScroll();
   }
 
