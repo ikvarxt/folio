@@ -178,6 +178,170 @@ final class MarkdownPreviewerTests: XCTestCase {
     }
 
     @MainActor
+    func testReloadRefreshesEveryOpenFileThatChangedOnDisk() async throws {
+        let controller = AppController.shared
+        closeAllTabs(in: controller)
+        defer { closeAllTabs(in: controller) }
+
+        let unchanged = try makeTemporaryMarkdown("# Untouched heading")
+        let firstChanged = try makeTemporaryMarkdown("# First heading")
+        let secondChanged = try makeTemporaryMarkdown("# Second heading")
+        defer {
+            for url in [unchanged, firstChanged, secondChanged] {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+
+        controller.openFiles([unchanged, firstChanged, secondChanged])
+        XCTAssertEqual(controller.tabs.count, 3)
+
+        try await waitForIdleRender(in: controller)
+
+        // The selected tab is the last opened one, so the other two prove that a
+        // refresh is not limited to whatever happens to be visible.
+        XCTAssertEqual(controller.selectedTab?.url, secondChanged)
+
+        try "# First heading, revised further".write(to: firstChanged, atomically: true, encoding: .utf8)
+        try "# Second heading, revised further".write(to: secondChanged, atomically: true, encoding: .utf8)
+        refreshSyncStatuses(in: controller)
+
+        XCTAssertEqual(
+            Set(controller.outdatedTabs.map(\.url)),
+            Set([firstChanged, secondChanged])
+        )
+
+        XCTAssertEqual(controller.reloadOutdatedTabs(), 2)
+
+        try await waitForIdleRender(in: controller)
+
+        XCTAssertTrue(controller.outdatedTabs.isEmpty)
+
+        let firstTab = controller.tabs.first { $0.url == firstChanged }
+        XCTAssertTrue(firstTab?.renderedHTML?.contains("First heading, revised further") == true)
+
+        let secondTab = controller.tabs.first { $0.url == secondChanged }
+        XCTAssertTrue(secondTab?.renderedHTML?.contains("Second heading, revised further") == true)
+    }
+
+    @MainActor
+    func testReloadFallsBackToCurrentTabWhenNothingChanged() async throws {
+        let controller = AppController.shared
+        closeAllTabs(in: controller)
+        defer { closeAllTabs(in: controller) }
+
+        let url = try makeTemporaryMarkdown("# Stable heading")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        controller.openFiles([url])
+        try await waitForIdleRender(in: controller)
+
+        let revisionBeforeReload = controller.selectedTab?.renderRevision ?? 0
+
+        XCTAssertEqual(controller.reloadOutdatedTabs(), 0)
+
+        try await waitForIdleRender(in: controller)
+
+        XCTAssertGreaterThan(controller.selectedTab?.renderRevision ?? 0, revisionBeforeReload)
+    }
+
+    @MainActor
+    func testReloadAllTabsRerendersEveryOpenFile() async throws {
+        let controller = AppController.shared
+        closeAllTabs(in: controller)
+        defer { closeAllTabs(in: controller) }
+
+        let first = try makeTemporaryMarkdown("# One")
+        let second = try makeTemporaryMarkdown("# Two")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        controller.openFiles([first, second])
+        try await waitForIdleRender(in: controller)
+
+        let revisionsBeforeReload = controller.tabs.map(\.renderRevision)
+
+        controller.reloadAllTabs()
+        try await waitForIdleRender(in: controller)
+
+        for (tab, previousRevision) in zip(controller.tabs, revisionsBeforeReload) {
+            XCTAssertGreaterThan(tab.renderRevision, previousRevision)
+        }
+    }
+
+    @MainActor
+    func testSelectingAClosedTabLeavesTheSelectionIntact() async throws {
+        let controller = AppController.shared
+        closeAllTabs(in: controller)
+        defer { closeAllTabs(in: controller) }
+
+        let first = try makeTemporaryMarkdown("# One")
+        let second = try makeTemporaryMarkdown("# Two")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        controller.openFiles([first, second])
+        try await waitForIdleRender(in: controller)
+
+        let closedTabID = try XCTUnwrap(controller.tabs.first { $0.url == second }?.id)
+        controller.closeTab(id: closedTabID)
+
+        let survivingSelection = controller.selectedTabID
+        controller.selectTab(closedTabID)
+
+        XCTAssertEqual(controller.selectedTabID, survivingSelection)
+        XCTAssertNotNil(controller.selectedTab)
+    }
+
+    // MARK: - Helpers
+
+    private func makeTemporaryMarkdown(_ contents: String) throws -> URL {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        return url.standardizedFileURL
+    }
+
+    @MainActor
+    private func closeAllTabs(in controller: AppController) {
+        for tab in controller.tabs {
+            controller.closeTab(id: tab.id)
+        }
+    }
+
+    @MainActor
+    private func refreshSyncStatuses(in controller: AppController) {
+        for tab in controller.tabs {
+            tab.updateFileSyncStatus(using: FileVersionSnapshot.capture(for: tab.url))
+        }
+    }
+
+    @MainActor
+    private func waitForIdleRender(
+        in controller: AppController,
+        timeout: Duration = .seconds(5)
+    ) async throws {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+
+        while ContinuousClock.now < deadline {
+            let isIdle = controller.tabs.allSatisfy { !$0.isLoading && $0.renderedHTML != nil }
+
+            if isIdle {
+                return
+            }
+
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTFail("Renders did not settle within \(timeout)")
+    }
+
+    @MainActor
     func testZenModeToggleUpdatesControllerState() {
         let controller = AppController.shared
         let originalValue = controller.isZenModeEnabled

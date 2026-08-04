@@ -88,6 +88,12 @@ final class AppController: ObservableObject {
     }
 
     func selectTab(_ tabID: DocumentTab.ID) {
+        // Row taps can race a close on the same row; never point the selection
+        // at a tab that is already gone or the preview would blank out.
+        guard tabs.contains(where: { $0.id == tabID }) else {
+            return
+        }
+
         selectedTabID = tabID
     }
 
@@ -112,6 +118,39 @@ final class AppController: ObservableObject {
         if selectedTabID == id {
             let nextIndex = min(index, tabs.count - 1)
             selectedTabID = nextIndex >= 0 ? tabs[nextIndex].id : nil
+        }
+    }
+
+    /// Tabs whose file diverged from what is currently rendered.
+    var outdatedTabs: [DocumentTab] {
+        tabs.filter(\.needsReloadPrompt)
+    }
+
+    /*
+     * A refresh covers every open file that changed on disk, not just the
+     * visible one, so switching tabs after a reload never shows stale content.
+     * With nothing stale, it still re-renders the current tab so the command
+     * is never a silent no-op.
+     */
+    @discardableResult
+    func reloadOutdatedTabs() -> Int {
+        let staleTabIDs = outdatedTabs.map(\.id)
+
+        guard !staleTabIDs.isEmpty else {
+            reloadSelectedTab()
+            return 0
+        }
+
+        for tabID in staleTabIDs {
+            render(tabID: tabID)
+        }
+
+        return staleTabIDs.count
+    }
+
+    func reloadAllTabs() {
+        for tab in tabs {
+            render(tabID: tab.id)
         }
     }
 
