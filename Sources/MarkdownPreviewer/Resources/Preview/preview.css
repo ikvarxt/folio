@@ -391,6 +391,21 @@ td {
 }
 
 /*
+ * cmark-gfm carries column alignment as an `align` attribute. That is only a
+ * presentational hint, so it loses to the author-level rule above and has to be
+ * restated here or every `:-:` and `--:` column silently renders left-aligned.
+ */
+th[align="center"],
+td[align="center"] {
+  text-align: center;
+}
+
+th[align="right"],
+td[align="right"] {
+  text-align: right;
+}
+
+/*
  * Header as a tracked label row plus a single strong rule: a filled header
  * band on warm paper reads as a disabled control, not as structure.
  */
@@ -454,45 +469,83 @@ ol > li::marker {
   font-variant-numeric: tabular-nums;
 }
 
-/* Task lists, rewritten from literal "[ ]" text by preview.js. */
-li.task-item {
+/*
+ * Task lists come from the cmark-gfm tasklist extension as a real disabled
+ * <input type="checkbox"> with no wrapper class, so the list marker is removed
+ * by matching on the input itself.
+ */
+li:has(> input[type="checkbox"]) {
   list-style: none;
   margin-left: -1.4rem;
   padding-left: 1.4rem;
-  position: relative;
 }
 
-.task-box {
-  position: absolute;
-  left: 0;
-  top: 0.42em;
+li > input[type="checkbox"] {
+  appearance: none;
   width: 0.95em;
   height: 0.95em;
+  margin: 0 0.45em 0 0;
+  position: relative;
+  top: 0.06em;
   box-sizing: border-box;
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
   background: var(--paper);
+  vertical-align: baseline;
 }
 
-li.task-item.is-done {
-  color: var(--muted);
-}
-
-li.task-item.is-done .task-box {
+li > input[type="checkbox"]:checked {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-li.task-item.is-done .task-box::after {
+li > input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  left: 0.26em;
-  top: 0.1em;
-  width: 0.26em;
-  height: 0.48em;
+  left: 0.27em;
+  top: 0.08em;
+  width: 0.24em;
+  height: 0.46em;
   border: solid oklch(0.99 0.005 90);
   border-width: 0 1.6px 1.6px 0;
   transform: rotate(42deg);
+}
+
+li:has(> input[type="checkbox"]:checked) {
+  color: var(--muted);
+}
+
+/* ---------- Footnotes ---------- */
+
+.footnote-ref a {
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  padding: 0 0.1em;
+}
+
+.footnotes {
+  margin-top: 2.6rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.footnotes ol {
+  padding-left: 1.5rem;
+}
+
+.footnotes li {
+  scroll-margin-top: var(--anchor-offset);
+}
+
+.footnotes p {
+  margin-bottom: 0.5rem;
+}
+
+.footnote-backref {
+  text-decoration: none;
+  margin-left: 0.35em;
 }
 
 /* ---------- Rules, media, diagrams ---------- */

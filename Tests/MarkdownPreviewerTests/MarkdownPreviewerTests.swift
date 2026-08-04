@@ -42,7 +42,88 @@ final class MarkdownPreviewerTests: XCTestCase {
 
         XCTAssertTrue(rendered.html.contains("<table>"))
         XCTAssertTrue(rendered.html.contains("<thead>"))
-        XCTAssertTrue(rendered.html.contains("<td style=\"text-align: right;\">2</td>"))
+
+        // cmark-gfm carries alignment as an attribute, not an inline style, and
+        // preview.css has to restate it because an attribute loses to author CSS.
+        XCTAssertTrue(rendered.html.contains("<td align=\"right\">2</td>"))
+        XCTAssertTrue(
+            PreviewTemplate.resourceText(named: "preview", ext: "css", subdirectory: "Preview")
+                .contains("td[align=\"right\"]")
+        )
+    }
+
+    func testStrikethroughAndTaskListsComeFromTheParser() throws {
+        let markdown = """
+        Struck ~~through~~ text.
+
+        - [ ] open task
+        - [x] done task
+        """
+
+        let html = try MarkdownRenderer.renderHTML(markdown: markdown)
+
+        XCTAssertTrue(html.contains("<del>through</del>"))
+        XCTAssertFalse(html.contains("~~"))
+        XCTAssertTrue(html.contains("<input type=\"checkbox\" disabled=\"\" /> open task"))
+        XCTAssertTrue(html.contains("checked=\"\""))
+
+        // The literal "[ ]" that preview.js used to rewrite must be gone.
+        XCTAssertFalse(html.contains("[ ]"))
+        XCTAssertFalse(html.contains("[x]"))
+    }
+
+    func testFootnotesRender() throws {
+        let markdown = """
+        A claim.[^src]
+
+        [^src]: Where it came from.
+        """
+
+        let html = try MarkdownRenderer.renderHTML(markdown: markdown)
+
+        XCTAssertTrue(html.contains("class=\"footnote-ref\""))
+        XCTAssertTrue(html.contains("class=\"footnotes\""))
+        XCTAssertTrue(html.contains("Where it came from."))
+    }
+
+    func testBareURLsStayPlainTextSoChineseProseIsNotSwallowed() throws {
+        let markdown = """
+        详见 https://example.com/spec。另见 www.example.dev，以及说明。
+
+        A [labelled link](https://example.com/path) still works.
+        """
+
+        let html = try MarkdownRenderer.renderHTML(markdown: markdown)
+
+        /*
+         * Guard rail for the "autolink" extension, which is deliberately off. Its
+         * scanner treats non-ASCII bytes as part of the URL and only stops at
+         * ASCII whitespace, so in Chinese prose a bare URL eats the following
+         * punctuation and words. If someone switches it back on, this fails.
+         * See the comment on MarkdownRenderer.syntaxExtensionNames.
+         */
+        XCTAssertFalse(html.contains("href=\"https://example.com/spec"))
+        XCTAssertFalse(html.contains("%E3%80%82"))
+        XCTAssertTrue(html.contains("详见 https://example.com/spec。另见"))
+
+        // Explicit links are a different code path and must keep working.
+        XCTAssertTrue(html.contains("<a href=\"https://example.com/path\">labelled link</a>"))
+    }
+
+    func testStrikethroughIsNotAppliedInsideCodeSpansOrFences() throws {
+        let markdown = """
+        Inline `a ~~b~~ c` stays literal.
+
+        ```text
+        ~~not struck~~
+        ```
+        """
+
+        let html = try MarkdownRenderer.renderHTML(markdown: markdown)
+
+        XCTAssertTrue(html.contains("a ~~b~~ c"))
+        XCTAssertTrue(html.contains("~~not struck~~"))
+        XCTAssertFalse(html.contains("<del>"))
     }
 
     func testRendererPreservesLanguageClassesForFencedCodeBlocks() throws {
@@ -72,20 +153,6 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertTrue(rendered.html.contains("class=\"language-swift\""))
         XCTAssertTrue(rendered.html.contains("class=\"language-react\""))
         XCTAssertTrue(rendered.html.contains("class=\"language-kotlin\""))
-    }
-
-    func testTablePreprocessorLeavesCodeFencesUntouched() throws {
-        let markdown = """
-        ```md
-        | not | a | table |
-        | --- | --- | --- |
-        ```
-        """
-
-        let processed = try MarkdownPreprocessor().preprocess(markdown)
-
-        XCTAssertFalse(processed.contains("<table>"))
-        XCTAssertTrue(processed.contains("| not | a | table |"))
     }
 
     func testTableOfContentsTreePreservesHeadingHierarchy() {
@@ -230,55 +297,6 @@ final class MarkdownPreviewerTests: XCTestCase {
         let codeStart = try XCTUnwrap(rendered.html.range(of: "<code class=\"language-swift\">"))
         let codeEnd = try XCTUnwrap(rendered.html.range(of: "</code>"))
         XCTAssertFalse(rendered.html[codeStart.lowerBound..<codeEnd.upperBound].contains("<br"))
-    }
-
-    func testStrikethroughIsDesugaredForCmark() throws {
-        let preprocessor = MarkdownPreprocessor()
-
-        XCTAssertEqual(
-            preprocessor.applyStrikethrough(to: "a ~~gone~~ b"),
-            "a <del>gone</del> b"
-        )
-        XCTAssertEqual(
-            preprocessor.applyStrikethrough(to: "~~one~~ then ~~two~~"),
-            "<del>one</del> then <del>two</del>"
-        )
-    }
-
-    func testStrikethroughLeavesUnpairedAndEmptyMarkersAlone() throws {
-        let preprocessor = MarkdownPreprocessor()
-
-        XCTAssertEqual(preprocessor.applyStrikethrough(to: "a ~~dangling"), "a ~~dangling")
-        XCTAssertEqual(preprocessor.applyStrikethrough(to: "~~~~"), "~~~~")
-        XCTAssertEqual(preprocessor.applyStrikethrough(to: "no markers here"), "no markers here")
-    }
-
-    func testStrikethroughSkipsInlineCodeSpans() throws {
-        let preprocessor = MarkdownPreprocessor()
-
-        XCTAssertEqual(
-            preprocessor.applyStrikethrough(to: "use `a ~~ b` verbatim"),
-            "use `a ~~ b` verbatim"
-        )
-        XCTAssertEqual(
-            preprocessor.applyStrikethrough(to: "`~~kept~~` but ~~cut~~"),
-            "`~~kept~~` but <del>cut</del>"
-        )
-    }
-
-    func testStrikethroughSkipsFencedCodeBlocks() throws {
-        let markdown = """
-        ```text
-        ~~not struck~~
-        ```
-
-        ~~struck~~
-        """
-
-        let processed = try MarkdownPreprocessor().preprocess(markdown)
-
-        XCTAssertTrue(processed.contains("~~not struck~~"))
-        XCTAssertTrue(processed.contains("<del>struck</del>"))
     }
 
     func testRendererEmitsDelElementForStrikethrough() throws {

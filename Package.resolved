@@ -1,13 +1,13 @@
 {
-  "originHash" : "e2dad9265aacfaa82e599d754cd0c6ab7a11544f639e15f3d97ef6f2abf5b6b7",
+  "originHash" : "d981670b53b3c724be6dcb91e409774e75b822b4338a4bef8bf4685dc566e526",
   "pins" : [
     {
-      "identity" : "down",
+      "identity" : "swift-cmark-gfm",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/johnxnguyen/Down.git",
+      "location" : "https://github.com/stackotter/swift-cmark-gfm",
       "state" : {
-        "revision" : "f34b166be1f1db4aa8f573067e901d72f2a6be57",
-        "version" : "0.11.0"
+        "revision" : "7ec44e7384793e507cf046336aef68586719a24e",
+        "version" : "1.0.2"
       }
     }
   ],

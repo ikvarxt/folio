@@ -14,13 +14,16 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/johnxnguyen/Down.git", from: "0.9.5"),
+        // cmark-gfm rather than plain cmark: tables, strikethrough, task lists,
+        // autolinks, and footnotes come from the parser instead of being
+        // hand-rolled around it.
+        .package(url: "https://github.com/stackotter/swift-cmark-gfm", from: "1.0.2"),
     ],
     targets: [
         .executableTarget(
             name: "MarkdownPreviewer",
             dependencies: [
-                "Down",
+                .product(name: "CMarkGFM", package: "swift-cmark-gfm"),
             ],
             resources: [
                 .process("Resources"),

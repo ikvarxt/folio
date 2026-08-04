@@ -184,49 +184,6 @@
     });
   }
 
-  function firstTextNode(root) {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-
-    while (walker.nextNode()) {
-      if ((walker.currentNode.nodeValue || "").trim()) {
-        return walker.currentNode;
-      }
-    }
-
-    return null;
-  }
-
-  /*
-   * cmark has no GFM task-list extension, so "- [ ] item" arrives as literal
-   * "[ ] item" text. Rewrite it into a styled checkbox here rather than
-   * teaching the Markdown preprocessor about list structure.
-   */
-  function decorateTaskLists() {
-    document.querySelectorAll("li").forEach((item) => {
-      const textNode = firstTextNode(item);
-      if (!textNode) {
-        return;
-      }
-
-      const match = /^\s*\[([ xX])\]\s+/.exec(textNode.nodeValue || "");
-      if (!match) {
-        return;
-      }
-
-      textNode.nodeValue = (textNode.nodeValue || "").slice(match[0].length);
-      item.classList.add("task-item");
-
-      if (match[1] !== " ") {
-        item.classList.add("is-done");
-      }
-
-      const box = document.createElement("span");
-      box.className = "task-box";
-      box.setAttribute("aria-hidden", "true");
-      item.insertBefore(box, item.firstChild);
-    });
-  }
-
   function buildTableOfContents() {
     slugCounts.clear();
 
@@ -382,7 +339,6 @@
   async function runContentPasses() {
     const mermaidNodes = replaceMermaidBlocks();
     wrapTables();
-    decorateTaskLists();
     buildTableOfContents();
     await highlightCodeBlocks();
     await renderMermaid(mermaidNodes);

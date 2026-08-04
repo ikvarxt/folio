@@ -8,15 +8,6 @@ extension String {
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "'", with: "&#39;")
     }
-
-    func removingSingleParagraphWrapper() -> String {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix("<p>"), trimmed.hasSuffix("</p>") else {
-            return trimmed
-        }
-
-        return String(trimmed.dropFirst(3).dropLast(4))
-    }
 }
 
 extension Duration {
