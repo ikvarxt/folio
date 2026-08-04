@@ -50,11 +50,87 @@ struct MarkdownPreprocessor {
                 continue
             }
 
-            output.append(line)
+            output.append(activeFence == nil ? applyStrikethrough(to: line) : line)
             index += 1
         }
 
         return output.joined(separator: "\n")
+    }
+
+    /*
+     * cmark ships without the GFM strikethrough extension, so "~~text~~" would
+     * otherwise reach the preview as literal tildes. Rewrite it to <del> here,
+     * the same place pipe tables are already desugared.
+     *
+     * Inline code spans are stepped over so "`a ~~ b`" survives untouched.
+     * Indented (non-fenced) code blocks are not tracked, matching the existing
+     * limitation of the table parser above.
+     */
+    func applyStrikethrough(to line: String) -> String {
+        guard line.contains("~~") else {
+            return line
+        }
+
+        var output = ""
+        var plainSegment = ""
+        var activeCodeSpan: Int?
+        var index = line.startIndex
+
+        while index < line.endIndex {
+            guard line[index] == "`" else {
+                if activeCodeSpan == nil {
+                    plainSegment.append(line[index])
+                } else {
+                    output.append(line[index])
+                }
+
+                index = line.index(after: index)
+                continue
+            }
+
+            let backtickRun = line[index...].prefix { $0 == "`" }
+
+            if let openLength = activeCodeSpan {
+                if backtickRun.count == openLength {
+                    activeCodeSpan = nil
+                }
+            } else {
+                output += strikethroughApplied(to: plainSegment)
+                plainSegment = ""
+                activeCodeSpan = backtickRun.count
+            }
+
+            output += backtickRun
+            index = line.index(index, offsetBy: backtickRun.count)
+        }
+
+        return output + strikethroughApplied(to: plainSegment)
+    }
+
+    private func strikethroughApplied(to text: String) -> String {
+        let segments = text.components(separatedBy: "~~")
+
+        guard segments.count >= 3 else {
+            return text
+        }
+
+        var result = segments[0]
+        var segmentIndex = 1
+
+        while segmentIndex < segments.count {
+            let isClosed = segmentIndex + 1 < segments.count
+
+            if isClosed, !segments[segmentIndex].isEmpty {
+                result += "<del>\(segments[segmentIndex])</del>"
+                result += segments[segmentIndex + 1]
+                segmentIndex += 2
+            } else {
+                result += "~~\(segments[segmentIndex])"
+                segmentIndex += 1
+            }
+        }
+
+        return result
     }
 
     private func parseTable(from lines: [String], startIndex: Int) throws -> (html: String, nextIndex: Int)? {
@@ -162,7 +238,7 @@ struct MarkdownPreprocessor {
             return ""
         }
 
-        let html = try Down(markdownString: markdown).toHTML(.unsafe)
+        let html = try Down(markdownString: applyStrikethrough(to: markdown)).toHTML(.unsafe)
         return html.removingSingleParagraphWrapper()
     }
 

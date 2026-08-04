@@ -177,6 +177,69 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertTrue(tab.needsReloadPrompt)
     }
 
+    func testStrikethroughIsDesugaredForCmark() throws {
+        let preprocessor = MarkdownPreprocessor()
+
+        XCTAssertEqual(
+            preprocessor.applyStrikethrough(to: "a ~~gone~~ b"),
+            "a <del>gone</del> b"
+        )
+        XCTAssertEqual(
+            preprocessor.applyStrikethrough(to: "~~one~~ then ~~two~~"),
+            "<del>one</del> then <del>two</del>"
+        )
+    }
+
+    func testStrikethroughLeavesUnpairedAndEmptyMarkersAlone() throws {
+        let preprocessor = MarkdownPreprocessor()
+
+        XCTAssertEqual(preprocessor.applyStrikethrough(to: "a ~~dangling"), "a ~~dangling")
+        XCTAssertEqual(preprocessor.applyStrikethrough(to: "~~~~"), "~~~~")
+        XCTAssertEqual(preprocessor.applyStrikethrough(to: "no markers here"), "no markers here")
+    }
+
+    func testStrikethroughSkipsInlineCodeSpans() throws {
+        let preprocessor = MarkdownPreprocessor()
+
+        XCTAssertEqual(
+            preprocessor.applyStrikethrough(to: "use `a ~~ b` verbatim"),
+            "use `a ~~ b` verbatim"
+        )
+        XCTAssertEqual(
+            preprocessor.applyStrikethrough(to: "`~~kept~~` but ~~cut~~"),
+            "`~~kept~~` but <del>cut</del>"
+        )
+    }
+
+    func testStrikethroughSkipsFencedCodeBlocks() throws {
+        let markdown = """
+        ```text
+        ~~not struck~~
+        ```
+
+        ~~struck~~
+        """
+
+        let processed = try MarkdownPreprocessor().preprocess(markdown)
+
+        XCTAssertTrue(processed.contains("~~not struck~~"))
+        XCTAssertTrue(processed.contains("<del>struck</del>"))
+    }
+
+    func testRendererEmitsDelElementForStrikethrough() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try "Text with ~~a removed clause~~ inside.".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rendered = try MarkdownRenderer().render(url: url)
+
+        XCTAssertTrue(rendered.html.contains("<del>a removed clause</del>"))
+        XCTAssertFalse(rendered.html.contains("~~"))
+    }
+
     @MainActor
     func testReloadRefreshesEveryOpenFileThatChangedOnDisk() async throws {
         let controller = AppController.shared

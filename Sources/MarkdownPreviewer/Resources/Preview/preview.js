@@ -8,6 +8,26 @@
     ["shell", "bash"],
   ]);
 
+  // Warm-paper palette mirroring preview.css, so diagrams sit on the same
+  // surface as the prose instead of arriving in Mermaid's grey default theme.
+  const mermaidTheme = {
+    background: "#fdfcf8",
+    primaryColor: "#f6f1e6",
+    primaryTextColor: "#362f27",
+    primaryBorderColor: "#c9bda8",
+    secondaryColor: "#f1ece0",
+    tertiaryColor: "#faf7f0",
+    mainBkg: "#f6f1e6",
+    nodeBorder: "#c9bda8",
+    clusterBkg: "#faf7f0",
+    clusterBorder: "#d8cfbe",
+    lineColor: "#9d8b71",
+    textColor: "#362f27",
+    edgeLabelBackground: "#fdfcf8",
+    fontFamily: '"Iowan Old Style", "Palatino Linotype", "Songti SC", serif',
+    fontSize: "14px",
+  };
+
   const slugCounts = new Map();
   let scrollScheduled = false;
 
@@ -76,15 +96,20 @@
   }
 
   async function highlightCodeBlocks() {
-    if (!window.hljs) {
-      return;
-    }
-
     const blocks = Array.from(document.querySelectorAll("pre > code[class*='language-'], pre > code[class*='lang-']"));
 
     for (const [index, block] of blocks.entries()) {
       const language = resolveHighlightLanguage(block);
-      if (!language || language === "mermaid" || !window.hljs.getLanguage(language)) {
+      if (!language || language === "mermaid") {
+        continue;
+      }
+
+      // Label every tagged fence, even one hljs cannot tokenise.
+      if (block.parentElement) {
+        block.parentElement.dataset.lang = language;
+      }
+
+      if (!window.hljs || !window.hljs.getLanguage(language)) {
         continue;
       }
 
@@ -120,6 +145,49 @@
       table.replaceWith(scrollWrapper);
       scrollWrapper.appendChild(frame);
       frame.appendChild(table);
+    });
+  }
+
+  function firstTextNode(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+
+    while (walker.nextNode()) {
+      if ((walker.currentNode.nodeValue || "").trim()) {
+        return walker.currentNode;
+      }
+    }
+
+    return null;
+  }
+
+  /*
+   * cmark has no GFM task-list extension, so "- [ ] item" arrives as literal
+   * "[ ] item" text. Rewrite it into a styled checkbox here rather than
+   * teaching the Markdown preprocessor about list structure.
+   */
+  function decorateTaskLists() {
+    document.querySelectorAll("li").forEach((item) => {
+      const textNode = firstTextNode(item);
+      if (!textNode) {
+        return;
+      }
+
+      const match = /^\s*\[([ xX])\]\s+/.exec(textNode.nodeValue || "");
+      if (!match) {
+        return;
+      }
+
+      textNode.nodeValue = (textNode.nodeValue || "").slice(match[0].length);
+      item.classList.add("task-item");
+
+      if (match[1] !== " ") {
+        item.classList.add("is-done");
+      }
+
+      const box = document.createElement("span");
+      box.className = "task-box";
+      box.setAttribute("aria-hidden", "true");
+      item.insertBefore(box, item.firstChild);
     });
   }
 
@@ -175,7 +243,8 @@
     window.mermaid.initialize({
       startOnLoad: false,
       securityLevel: "loose",
-      theme: "neutral",
+      theme: "base",
+      themeVariables: mermaidTheme,
       flowchart: {
         useMaxWidth: true,
       },
@@ -193,6 +262,7 @@
   async function boot() {
     const mermaidNodes = replaceMermaidBlocks();
     wrapTables();
+    decorateTaskLists();
     buildTableOfContents();
     setupScrollTracking();
     await highlightCodeBlocks();
