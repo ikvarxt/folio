@@ -2,7 +2,10 @@ import Down
 import Foundation
 
 struct RenderedDocument: Sendable {
+    /// Full page, used for the first load of a tab.
     let html: String
+    /// Just the article contents, used to swap content without a reload.
+    let bodyHTML: String
     let byteCount: Int
     let lineCount: Int
     let renderDuration: TimeInterval
@@ -35,6 +38,7 @@ struct MarkdownRenderer {
 
         return RenderedDocument(
             html: PreviewTemplate.makeDocumentHTML(title: url.lastPathComponent, bodyHTML: bodyHTML),
+            bodyHTML: bodyHTML,
             byteCount: source.byteCount,
             lineCount: source.lineCount,
             renderDuration: elapsed.timeInterval,

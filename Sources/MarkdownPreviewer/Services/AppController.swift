@@ -11,9 +11,21 @@ final class AppController: ObservableObject {
 
     static let shared = AppController()
 
+    private enum PreferenceKey {
+        static let autoReload = "autoReloadOnDiskChange"
+    }
+
     @Published private(set) var tabs: [DocumentTab] = []
     @Published var selectedTabID: DocumentTab.ID?
     @Published private(set) var isZenModeEnabled = false
+
+    /*
+     * On by default: this app is read-only and normally sits beside an editor,
+     * so the useful behaviour is for a save to show up here on its own. Content
+     * is swapped without a page reload, so an update mid-read costs nothing but
+     * the changed text.
+     */
+    @Published private(set) var isAutoReloadEnabled: Bool
 
     private let renderer = MarkdownRenderer()
     private var renderTasks: [DocumentTab.ID: Task<Void, Never>] = [:]
@@ -21,6 +33,10 @@ final class AppController: ObservableObject {
     private var didLoadLaunchArguments = false
 
     private init() {
+        let defaults = UserDefaults.standard
+        defaults.register(defaults: [PreferenceKey.autoReload: true])
+        isAutoReloadEnabled = defaults.bool(forKey: PreferenceKey.autoReload)
+
         startFileVersionMonitoring()
     }
 
@@ -174,6 +190,21 @@ final class AppController: ObservableObject {
         isZenModeEnabled.toggle()
     }
 
+    func toggleAutoReload() {
+        setAutoReload(!isAutoReloadEnabled)
+    }
+
+    func setAutoReload(_ isEnabled: Bool) {
+        isAutoReloadEnabled = isEnabled
+        UserDefaults.standard.set(isEnabled, forKey: PreferenceKey.autoReload)
+
+        // Catch up on anything that went stale while it was off, but do not
+        // force a pointless re-render when nothing did.
+        if isEnabled, !outdatedTabs.isEmpty {
+            reloadOutdatedTabs()
+        }
+    }
+
     func setZenMode(_ isEnabled: Bool) {
         isZenModeEnabled = isEnabled
     }
@@ -184,6 +215,10 @@ final class AppController: ObservableObject {
         }
 
         tab.updateTableOfContents(items)
+    }
+
+    func updateActiveHeading(_ headingID: String?, for tabID: DocumentTab.ID) {
+        tabs.first(where: { $0.id == tabID })?.updateActiveHeading(headingID)
     }
 
     func updateScrollPosition(_ position: Double, for tabID: DocumentTab.ID) {
@@ -225,6 +260,7 @@ final class AppController: ObservableObject {
 
                     currentTab.applyRender(
                         html: rendered.html,
+                        bodyHTML: rendered.bodyHTML,
                         metadata: .init(
                             byteCount: rendered.byteCount,
                             lineCount: rendered.lineCount,
@@ -291,12 +327,41 @@ final class AppController: ObservableObject {
     }
 
     private func applyFileVersionSnapshots(_ snapshots: [DocumentTab.ID: FileVersionSnapshot]) {
+        var tabIDsToReload: [DocumentTab.ID] = []
+
         for tab in tabs {
             guard let snapshot = snapshots[tab.id] else {
                 continue
             }
 
             tab.updateFileSyncStatus(using: snapshot)
+
+            if isAutoReloadEnabled, shouldAutoReload(tab, snapshot: snapshot) {
+                tabIDsToReload.append(tab.id)
+            }
         }
+
+        for tabID in tabIDsToReload {
+            render(tabID: tabID)
+        }
+    }
+
+    private func shouldAutoReload(_ tab: DocumentTab, snapshot: FileVersionSnapshot) -> Bool {
+        guard tab.fileSyncStatus == .changedOnDisk else {
+            // A file that vanished keeps its last render and its badge; there is
+            // nothing better to show, and it usually means a move in progress.
+            return false
+        }
+
+        /*
+         * Editors that truncate before writing leave a momentarily empty file.
+         * Polling can land in that window, so an empty file where we previously
+         * had content is treated as a save in flight and picked up next tick.
+         */
+        if snapshot.fileSize == 0, (tab.renderMetadata?.byteCount ?? 0) > 0 {
+            return false
+        }
+
+        return true
     }
 }

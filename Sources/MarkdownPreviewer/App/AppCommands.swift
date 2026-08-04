@@ -53,6 +53,13 @@ struct AppCommands: Commands {
 
             Divider()
 
+            Toggle("Reload Automatically on Save", isOn: Binding(
+                get: { controller.isAutoReloadEnabled },
+                set: { controller.setAutoReload($0) }
+            ))
+
+            Divider()
+
             Button(controller.isZenModeEnabled ? "Exit Zen Mode" : "Enter Zen Mode") {
                 controller.toggleZenMode()
             }

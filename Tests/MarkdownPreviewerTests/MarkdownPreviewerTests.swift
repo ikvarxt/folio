@@ -141,6 +141,7 @@ final class MarkdownPreviewerTests: XCTestCase {
 
         tab.applyRender(
             html: "<p>Draft</p>",
+            bodyHTML: "<p>Draft</p>",
             metadata: .init(byteCount: 7, lineCount: 1, renderDuration: 0.001),
             fileVersion: initialVersion
         )
@@ -166,6 +167,7 @@ final class MarkdownPreviewerTests: XCTestCase {
 
         tab.applyRender(
             html: "<p>Draft</p>",
+            bodyHTML: "<p>Draft</p>",
             metadata: .init(byteCount: 7, lineCount: 1, renderDuration: 0.001),
             fileVersion: initialVersion
         )
@@ -412,6 +414,113 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertNotNil(controller.selectedTab)
     }
 
+    func testRendererExposesBodySeparatelyFromThePage() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try "# Heading\n\nParagraph.".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rendered = try MarkdownRenderer().render(url: url)
+
+        // The body is what gets swapped into a live page, so it must carry the
+        // content without the shell that would nest a second <html> inside it.
+        XCTAssertTrue(rendered.bodyHTML.contains("<h1>Heading</h1>"))
+        XCTAssertFalse(rendered.bodyHTML.contains("<!doctype"))
+        XCTAssertFalse(rendered.bodyHTML.contains("<style>"))
+        XCTAssertTrue(rendered.html.contains(rendered.bodyHTML))
+    }
+
+    @MainActor
+    func testAutoReloadPicksUpASaveWithoutAnExplicitReload() async throws {
+        let controller = AppController.shared
+        let originalAutoReload = controller.isAutoReloadEnabled
+        closeAllTabs(in: controller)
+        defer {
+            closeAllTabs(in: controller)
+            controller.setAutoReload(originalAutoReload)
+        }
+
+        controller.setAutoReload(true)
+
+        let url = try makeTemporaryMarkdown("# Before the save")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        controller.openFiles([url])
+        try await waitForIdleRender(in: controller)
+
+        try "# After the save, with more words".write(to: url, atomically: true, encoding: .utf8)
+
+        // No reload call here: the disk monitor is expected to do it.
+        try await waitUntil(in: controller) { tab in
+            tab.renderedBodyHTML?.contains("After the save") == true
+        }
+
+        XCTAssertTrue(controller.outdatedTabs.isEmpty)
+    }
+
+    @MainActor
+    func testAutoReloadOffLeavesTheTabStaleUntilAskedToReload() async throws {
+        let controller = AppController.shared
+        let originalAutoReload = controller.isAutoReloadEnabled
+        closeAllTabs(in: controller)
+        defer {
+            closeAllTabs(in: controller)
+            controller.setAutoReload(originalAutoReload)
+        }
+
+        controller.setAutoReload(false)
+
+        let url = try makeTemporaryMarkdown("# Before the save")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        controller.openFiles([url])
+        try await waitForIdleRender(in: controller)
+
+        try "# After the save, with more words".write(to: url, atomically: true, encoding: .utf8)
+
+        try await waitUntil(in: controller) { tab in
+            tab.fileSyncStatus == .changedOnDisk
+        }
+
+        XCTAssertEqual(controller.selectedTab?.renderedBodyHTML?.contains("After the save"), false)
+
+        XCTAssertEqual(controller.reloadOutdatedTabs(), 1)
+        try await waitForIdleRender(in: controller)
+
+        XCTAssertEqual(controller.selectedTab?.renderedBodyHTML?.contains("After the save"), true)
+    }
+
+    @MainActor
+    func testActiveHeadingClearsWhenTheHeadingDisappears() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try "# One".write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let tab = DocumentTab(url: url)
+        tab.updateTableOfContents([
+            TableOfContentsItem(id: "one", title: "One", level: 1),
+            TableOfContentsItem(id: "two", title: "Two", level: 2),
+        ])
+        tab.updateActiveHeading("two")
+        XCTAssertEqual(tab.activeHeadingID, "two")
+
+        // A reload that removed that heading must not leave the outline pointing
+        // at a row that is no longer there.
+        tab.updateTableOfContents([
+            TableOfContentsItem(id: "one", title: "One", level: 1),
+        ])
+
+        XCTAssertEqual(tab.activeHeadingID, "one")
+
+        tab.updateActiveHeading("")
+        XCTAssertNil(tab.activeHeadingID)
+    }
+
     // MARK: - Helpers
 
     private func makeTemporaryMarkdown(_ contents: String) throws -> URL {
@@ -435,6 +544,27 @@ final class MarkdownPreviewerTests: XCTestCase {
         for tab in controller.tabs {
             tab.updateFileSyncStatus(using: FileVersionSnapshot.capture(for: tab.url))
         }
+    }
+
+    /// Polls until every open tab satisfies `condition`. The disk monitor runs on
+    /// a 1s cycle, so this needs a timeout well above that.
+    @MainActor
+    private func waitUntil(
+        in controller: AppController,
+        timeout: Duration = .seconds(8),
+        _ condition: (DocumentTab) -> Bool
+    ) async throws {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+
+        while ContinuousClock.now < deadline {
+            if !controller.tabs.isEmpty, controller.tabs.allSatisfy(condition) {
+                return
+            }
+
+            try await Task.sleep(for: .milliseconds(50))
+        }
+
+        XCTFail("Condition not met within \(timeout)")
     }
 
     @MainActor

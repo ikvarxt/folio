@@ -73,6 +73,7 @@ private struct ObservedTOCShell: View {
                                 TableOfContentsNodeRow(
                                     node: node,
                                     depth: 0,
+                                    activeHeadingID: tab.activeHeadingID,
                                     collapsedNodeIDs: $collapsedNodeIDs,
                                     onSelect: onSelect
                                 )
@@ -156,6 +157,7 @@ private struct OutlinePlaceholder: View {
 private struct TableOfContentsNodeRow: View {
     let node: TableOfContentsNode
     let depth: Int
+    let activeHeadingID: String?
     @Binding var collapsedNodeIDs: Set<String>
     let onSelect: (String) -> Void
 
@@ -166,6 +168,10 @@ private struct TableOfContentsNodeRow: View {
 
     private var isCollapsed: Bool {
         collapsedNodeIDs.contains(node.id)
+    }
+
+    private var isActive: Bool {
+        node.id == activeHeadingID
     }
 
     private var titleFont: Font {
@@ -180,6 +186,10 @@ private struct TableOfContentsNodeRow: View {
     }
 
     private var titleColor: Color {
+        if isActive {
+            return Theme.accent
+        }
+
         switch node.item.level {
         case 1, 2:
             return Theme.ink
@@ -224,8 +234,18 @@ private struct TableOfContentsNodeRow: View {
             .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                    .fill(isHovering ? Theme.rowHover : .clear)
+                    .fill(rowFill)
             )
+            // Same thin rail the file list uses for its selection, so "where I
+            // am" reads the same way in both sidebars.
+            .overlay(alignment: .leading) {
+                if isActive {
+                    RoundedRectangle(cornerRadius: 1, style: .continuous)
+                        .fill(Theme.accent)
+                        .frame(width: 2)
+                        .padding(.vertical, 3)
+                }
+            }
             .contentShape(Rectangle())
             .onTapGesture {
                 onSelect(node.id)
@@ -234,18 +254,28 @@ private struct TableOfContentsNodeRow: View {
                 isHovering = hovering
             }
             .animation(.easeOut(duration: 0.12), value: isHovering)
+            .animation(.easeOut(duration: 0.15), value: isActive)
 
             if node.hasChildren, !isCollapsed {
                 ForEach(node.children) { child in
                     TableOfContentsNodeRow(
                         node: child,
                         depth: depth + 1,
+                        activeHeadingID: activeHeadingID,
                         collapsedNodeIDs: $collapsedNodeIDs,
                         onSelect: onSelect
                     )
                 }
             }
         }
+    }
+
+    private var rowFill: Color {
+        if isActive {
+            return Theme.accentSoft.opacity(0.6)
+        }
+
+        return isHovering ? Theme.rowHover : .clear
     }
 
     private func toggleCollapsed() {

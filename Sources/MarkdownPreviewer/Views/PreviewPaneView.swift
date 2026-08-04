@@ -72,6 +72,15 @@ private struct ObservedPreviewSurface: View {
 
             Spacer(minLength: Theme.Spacing.sm)
 
+            Button(action: controller.toggleAutoReload) {
+                Image(systemName: controller.isAutoReloadEnabled ? "bolt.fill" : "bolt.slash")
+            }
+            .buttonStyle(IconButtonStyle(isProminent: controller.isAutoReloadEnabled))
+            .help(controller.isAutoReloadEnabled
+                ? "Auto-reload is on: saving the file updates this preview"
+                : "Auto-reload is off: press ⌘R after saving")
+            .accessibilityLabel(controller.isAutoReloadEnabled ? "Disable auto-reload" : "Enable auto-reload")
+
             reloadButton
 
             Button(action: controller.revealSelectedInFinder) {

@@ -25,7 +25,9 @@ final class DocumentTab: ObservableObject, Identifiable {
     @Published private(set) var title: String
     @Published private(set) var subtitle: String
     @Published private(set) var renderedHTML: String?
+    @Published private(set) var renderedBodyHTML: String?
     @Published private(set) var tableOfContents: [TableOfContentsItem] = []
+    @Published private(set) var activeHeadingID: String?
     @Published private(set) var renderMetadata: RenderMetadata?
     @Published private(set) var errorMessage: String?
     @Published private(set) var isLoading = false
@@ -67,10 +69,10 @@ final class DocumentTab: ObservableObject, Identifiable {
         errorMessage = nil
     }
 
-    func applyRender(html: String, metadata: RenderMetadata, fileVersion: FileVersionSnapshot) {
+    func applyRender(html: String, bodyHTML: String, metadata: RenderMetadata, fileVersion: FileVersionSnapshot) {
         renderedHTML = html
+        renderedBodyHTML = bodyHTML
         renderMetadata = metadata
-        tableOfContents = []
         errorMessage = nil
         isLoading = false
         lastRenderedFileVersion = fileVersion
@@ -82,8 +84,10 @@ final class DocumentTab: ObservableObject, Identifiable {
         errorMessage = message
         if let fallbackHTML {
             renderedHTML = fallbackHTML
+            renderedBodyHTML = nil
         }
         tableOfContents = []
+        activeHeadingID = nil
         isLoading = false
         lastRenderedFileVersion = fileVersion
         fileSyncStatus = .upToDate
@@ -92,6 +96,21 @@ final class DocumentTab: ObservableObject, Identifiable {
 
     func updateTableOfContents(_ items: [TableOfContentsItem]) {
         tableOfContents = items
+
+        // Drop a stale highlight if that heading no longer exists.
+        if let activeHeadingID, !items.contains(where: { $0.id == activeHeadingID }) {
+            self.activeHeadingID = items.first?.id
+        }
+    }
+
+    func updateActiveHeading(_ headingID: String?) {
+        let normalized = (headingID?.isEmpty ?? true) ? nil : headingID
+
+        guard normalized != activeHeadingID else {
+            return
+        }
+
+        activeHeadingID = normalized
     }
 
     func requestScroll(to anchorID: String) {
