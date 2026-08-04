@@ -27,6 +27,13 @@
   --r-lg: 14px;
   --r-xl: 20px;
 
+  /*
+   * Breathing room above a heading jumped to from the outline. preview.js reads
+   * this same value to decide which heading counts as active, so the highlight
+   * cannot land on the previous entry.
+   */
+  --anchor-offset: 28px;
+
   --pad-inline: clamp(22px, 2.6vw, 40px);
   --pad-block: clamp(30px, 3.2vw, 48px);
 
@@ -97,7 +104,7 @@ h6 {
   color: var(--ink);
   font-family: var(--type-serif);
   text-wrap: balance;
-  scroll-margin-top: 24px;
+  scroll-margin-top: var(--anchor-offset);
 }
 
 h1 {

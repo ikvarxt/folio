@@ -36,6 +36,7 @@
   let lastReportedHeadingID = null;
   let isScrollTrackingBound = false;
   let isMermaidConfigured = false;
+  let cachedAnchorOffset = null;
 
   function slugify(input) {
     return (input || "")
@@ -267,6 +268,23 @@
       }));
   }
 
+  /*
+   * How far below the viewport top a heading may sit and still count as the one
+   * being read. It has to cover `scroll-margin-top`, because jumping to a
+   * heading from the outline deliberately parks it that far down: with a smaller
+   * value the heading you just clicked sits below the line and the entry above
+   * it wins instead. Read from CSS so the two cannot drift apart.
+   */
+  function activeHeadingSlack() {
+    if (cachedAnchorOffset === null) {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue("--anchor-offset");
+      const parsed = Number.parseFloat(raw);
+      cachedAnchorOffset = Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return cachedAnchorOffset + 4;
+  }
+
   /// Last heading at or above the top of the viewport.
   function headingAtViewportTop(slack) {
     const limit = (window.scrollY || 0) + (slack || 0);
@@ -313,7 +331,7 @@
        */
       const active = isScrolledToBottom()
         ? headingIndex[headingIndex.length - 1]
-        : (headingAtViewportTop(4) || headingIndex[0]);
+        : (headingAtViewportTop(activeHeadingSlack()) || headingIndex[0]);
       const activeID = active ? active.id : "";
 
       if (activeID !== lastReportedHeadingID) {
@@ -377,7 +395,7 @@
    * reading position, both of those drift, but the heading does not.
    */
   function captureReadingPosition() {
-    const anchor = headingAtViewportTop(4);
+    const anchor = headingAtViewportTop(activeHeadingSlack());
 
     if (anchor) {
       return { id: anchor.id, delta: (window.scrollY || 0) - anchor.top };
