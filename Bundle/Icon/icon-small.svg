@@ -1,0 +1,31 @@
+<!--
+  Simplified app icon, used for the 16px and 32px slots of the iconset.
+
+  The full mark's five bars and 30px rail land under 1.5 device pixels at 16px
+  and smear into a single grey block. This variant was laid out at 16px first
+  and then scaled up by 64, so every feature is at least 1.5px on a 1x display:
+  three bars at two indent levels instead of five at three, and a rail thick
+  enough to still read as terracotta.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDFCF8"/>
+      <stop offset="1" stop-color="#F0EBDE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- No drop shadow: at 16px it only muddies the silhouette. -->
+  <rect x="100" y="100" width="824" height="824" rx="185.4" fill="url(#paper)"/>
+  <!-- Kept light: at 16px a heavier edge reads as a grey halo, not a contour. -->
+  <rect x="100.75" y="100.75" width="822.5" height="822.5" rx="185"
+        fill="none" stroke="#C9C0B2" stroke-opacity="0.45" stroke-width="1.5"/>
+
+  <!-- Outline rail -->
+  <rect x="224" y="256" width="96" height="512" rx="48" fill="#A96838"/>
+
+  <!-- Three heading bars, two indent levels -->
+  <rect x="384" y="256" width="416" height="128" rx="64" fill="#302D28"/>
+  <rect x="448" y="448" width="288" height="128" rx="64" fill="#302D28"/>
+  <rect x="384" y="640" width="352" height="128" rx="64" fill="#302D28"/>
+</svg>

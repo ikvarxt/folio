@@ -1,0 +1,47 @@
+<!--
+  Full-detail app icon, used for the 64px and larger slots of the iconset.
+
+  Mark: the outline rail from the app's own sidebar. A terracotta rule with ink
+  heading bars at three indent levels, which is what this app is for: reading
+  the structure of a long document. Deliberately not a page with grey lines,
+  and not the M-with-a-down-arrow Markdown logo.
+
+  Palette is lifted from Sources/MarkdownPreviewer/Views/Theme.swift, so the
+  icon and the running app cannot drift apart.
+
+  Geometry follows Apple's macOS grid: 1024 canvas, 824 rounded rect inset by
+  100 on every side, corner radius 185.4 (22.5% of 824).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDFCF8"/>
+      <stop offset="1" stop-color="#F0EBDE"/>
+    </linearGradient>
+
+    <filter id="lift" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#2A2118" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <!-- Paper sheet -->
+  <g filter="url(#lift)">
+    <rect x="100" y="100" width="824" height="824" rx="185.4" fill="url(#paper)"/>
+  </g>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184.9"
+        fill="none" stroke="#D7D0C6" stroke-opacity="0.55" stroke-width="1"/>
+
+  <!-- Outline rail -->
+  <rect x="272" y="296" width="40" height="432" rx="20" fill="#A96838"/>
+
+  <!--
+    Heading bars. Indent steps of 66 and widths that shrink with depth, so the
+    stair pattern reads as hierarchy rather than as five lines of body text.
+    Level 3 drops to inkSoft to complete the falloff.
+  -->
+  <rect x="366" y="300" width="404" height="48" rx="24" fill="#302D28"/>
+  <rect x="432" y="400" width="300" height="36" rx="18" fill="#302D28"/>
+  <rect x="498" y="492" width="200" height="32" rx="16" fill="#524D45"/>
+  <rect x="432" y="580" width="268" height="36" rx="18" fill="#302D28"/>
+  <rect x="366" y="676" width="344" height="44" rx="22" fill="#302D28"/>
+</svg>
