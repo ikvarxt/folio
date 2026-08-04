@@ -177,6 +177,59 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertTrue(tab.needsReloadPrompt)
     }
 
+    func testRendererKeepsSingleNewlinesAsLineBreaks() throws {
+        let markdown = """
+        > 需求来源：PRD 第一章。
+        > 改动范围文档：`scope.md`。
+        > 代码仓库：`demo`。
+        """
+
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try markdown.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rendered = try MarkdownRenderer().render(url: url)
+
+        // Two soft breaks between the three statements, so the metadata block
+        // stays three lines instead of collapsing into one paragraph.
+        XCTAssertEqual(rendered.html.components(separatedBy: "<br />").count - 1, 2)
+    }
+
+    func testHardBreaksDoNotDisturbCodeFencesOrGeneratedTables() throws {
+        let markdown = """
+        | Name | Value |
+        | --- | --- |
+        | Alpha | 1 |
+
+        ```swift
+        let a = 1
+        let b = 2
+        ```
+        """
+
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("md")
+
+        try markdown.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let rendered = try MarkdownRenderer().render(url: url)
+
+        // Table markup is emitted as a raw HTML block and code fences are
+        // literal, so neither should pick up a <br />.
+        let tableStart = try XCTUnwrap(rendered.html.range(of: "<table>"))
+        let tableEnd = try XCTUnwrap(rendered.html.range(of: "</table>"))
+        XCTAssertFalse(rendered.html[tableStart.lowerBound..<tableEnd.upperBound].contains("<br"))
+
+        let codeStart = try XCTUnwrap(rendered.html.range(of: "<code class=\"language-swift\">"))
+        let codeEnd = try XCTUnwrap(rendered.html.range(of: "</code>"))
+        XCTAssertFalse(rendered.html[codeStart.lowerBound..<codeEnd.upperBound].contains("<br"))
+    }
+
     func testStrikethroughIsDesugaredForCmark() throws {
         let preprocessor = MarkdownPreprocessor()
 

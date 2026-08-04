@@ -238,7 +238,8 @@ struct MarkdownPreprocessor {
             return ""
         }
 
-        let html = try Down(markdownString: applyStrikethrough(to: markdown)).toHTML(.unsafe)
+        let html = try Down(markdownString: applyStrikethrough(to: markdown))
+            .toHTML(MarkdownRenderer.downOptions)
         return html.removingSingleParagraphWrapper()
     }
 
