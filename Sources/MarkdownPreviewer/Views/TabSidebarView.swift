@@ -3,56 +3,22 @@ import SwiftUI
 struct TabSidebarView: View {
     @ObservedObject var controller: AppController
 
+    private var outdatedCount: Int {
+        controller.outdatedTabs.count
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Open files")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Theme.ink)
-                    Text("\(controller.tabs.count) tab\(controller.tabs.count == 1 ? "" : "s")")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(Theme.mutedInk)
-                }
-
-                Spacer()
-
-                Button(action: controller.openPanel) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.ink)
-                        .frame(width: 30, height: 30)
-                        .background(Theme.panelSurface)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Theme.line.opacity(0.75), lineWidth: 1)
-                        )
-                }
-                .buttonStyle(PressScaleButtonStyle())
-                .help("Open Markdown files")
-            }
-            .padding(20)
+            header
 
             Divider()
                 .overlay(Theme.line)
 
             if controller.tabs.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("No files yet")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Theme.ink)
-                    Text("Use Command-O to open one or more Markdown files. Already-open files are focused instead of duplicated.")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Theme.mutedInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(20)
-
-                Spacer()
+                emptyState
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 8) {
+                    LazyVStack(spacing: 1) {
                         ForEach(controller.tabs) { tab in
                             TabRowView(
                                 tab: tab,
@@ -62,31 +28,76 @@ struct TabSidebarView: View {
                             )
                         }
                     }
-                    .padding(12)
+                    .padding(.vertical, Theme.Spacing.xs)
+                    .padding(.horizontal, Theme.Spacing.xs)
                 }
             }
-
-            Divider()
-                .overlay(Theme.line)
-
-            Button(action: controller.openPanel) {
-                HStack(spacing: 10) {
-                    Image(systemName: "folder")
-                    Text("Open files")
-                    Spacer()
-                    Text("⌘O")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.mutedInk)
-                }
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-            }
-            .buttonStyle(PressScaleButtonStyle())
         }
         .frame(maxHeight: .infinity)
         .background(Theme.sidebarSurface)
+    }
+
+    private var header: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Open files")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+
+                Text(subtitleText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(outdatedCount > 0 ? Theme.signalChanged : Theme.mutedInk)
+                    .monospacedDigit()
+            }
+
+            Spacer(minLength: Theme.Spacing.xs)
+
+            if outdatedCount > 0 {
+                Button(action: { controller.reloadOutdatedTabs() }) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(IconButtonStyle(isProminent: true, tint: Theme.signalChanged))
+                .help("Reload the \(outdatedCount == 1 ? "file" : "\(outdatedCount) files") that changed on disk (⌘R)")
+                .accessibilityLabel("Reload changed files")
+            }
+
+            Button(action: controller.openPanel) {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(IconButtonStyle())
+            .help("Open Markdown files (⌘O)")
+            .accessibilityLabel("Open Markdown files")
+        }
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+    }
+
+    private var subtitleText: String {
+        let tabCount = controller.tabs.count
+        let base = "\(tabCount) file\(tabCount == 1 ? "" : "s")"
+
+        guard outdatedCount > 0 else {
+            return base
+        }
+
+        return "\(base) · \(outdatedCount) changed"
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Text("Nothing open")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+
+            Text("Press ⌘O, or drop a Markdown file on the app icon. Reopening a file focuses its tab instead of duplicating it.")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
     }
 }
 
@@ -97,53 +108,74 @@ private struct TabRowView: View {
     let onSelect: () -> Void
     let onClose: () -> Void
 
+    @State private var isHovering = false
+
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onSelect) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(rowFill)
+
+            // Thin rail rather than a filled block: keeps a dense file list
+            // readable while still marking the active document.
+            if isSelected {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(Theme.accent)
+                    .frame(width: 2)
+                    .padding(.vertical, Theme.Spacing.xs)
+            }
+
+            HStack(spacing: Theme.Spacing.xs) {
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: Theme.Spacing.xs) {
                         Text(tab.title)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
                             .foregroundStyle(Theme.ink)
                             .lineLimit(1)
+                            .truncationMode(.middle)
 
                         if tab.needsReloadPrompt {
-                            FileSyncIndicatorLight(status: tab.fileSyncStatus)
+                            FileSyncIndicatorLight(status: tab.fileSyncStatus, size: 6)
                         }
                     }
+
                     Text(tab.subtitle)
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 10))
                         .foregroundStyle(Theme.mutedInk)
                         .lineLimit(1)
+                        .truncationMode(.head)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(isSelected ? Theme.accentSoft : Theme.panelSurface.opacity(0.7))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(isSelected ? Theme.accent.opacity(0.32) : Theme.line.opacity(0.55), lineWidth: 1)
-                )
-            }
-            .buttonStyle(PressScaleButtonStyle())
 
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Theme.mutedInk)
-                    .frame(width: 28, height: 28)
-                    .background(Theme.panelSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Theme.line.opacity(0.65), lineWidth: 1)
-                    )
+                // Reserve the slot always so the label never reflows on hover.
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Theme.mutedInk)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressScaleButtonStyle())
+                .help("Close tab (⌘W)")
+                .accessibilityLabel("Close \(tab.title)")
+                .opacity(isHovering || isSelected ? 1 : 0)
             }
-            .buttonStyle(PressScaleButtonStyle())
-            .help("Close tab")
+            .padding(.leading, Theme.Spacing.sm)
+            .padding(.trailing, Theme.Spacing.xxs)
+            .padding(.vertical, Theme.Spacing.xs)
         }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onSelect)
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+
+    private var rowFill: Color {
+        if isSelected {
+            return Theme.accentSoft
+        }
+
+        return isHovering ? Theme.rowHover : .clear
     }
 }

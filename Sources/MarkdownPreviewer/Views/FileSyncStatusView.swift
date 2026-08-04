@@ -37,17 +37,12 @@ extension DocumentTab.FileSyncStatus {
 
 struct FileSyncIndicatorLight: View {
     let status: DocumentTab.FileSyncStatus
-    var size: CGFloat = 8
+    var size: CGFloat = 7
 
     var body: some View {
         Circle()
             .fill(status.indicatorColor)
             .frame(width: size, height: size)
-            .overlay(
-                Circle()
-                    .stroke(status.indicatorColor.opacity(0.2), lineWidth: max(1, size * 0.75))
-                    .scaleEffect(1.7)
-            )
             .accessibilityHidden(true)
     }
 }
@@ -57,13 +52,10 @@ struct FileSyncStatusLine: View {
 
     var body: some View {
         if let summaryText = status.summaryText {
-            HStack(spacing: 8) {
-                FileSyncIndicatorLight(status: status, size: 7)
-                Text(summaryText)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(status.indicatorColor)
-                    .lineLimit(1)
-            }
+            Text(summaryText)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(status.indicatorColor)
+                .lineLimit(1)
         }
     }
 }

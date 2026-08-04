@@ -7,24 +7,24 @@ struct RootView: View {
         HSplitView {
             if !controller.isZenModeEnabled {
                 TabSidebarView(controller: controller)
-                    .frame(minWidth: 250, idealWidth: 290, maxWidth: 360)
+                    .frame(minWidth: 200, idealWidth: 240, maxWidth: 320)
             }
 
             HSplitView {
                 PreviewPaneView(controller: controller)
-                    .frame(minWidth: 640)
+                    .frame(minWidth: 460)
 
                 if !controller.isZenModeEnabled {
                     TableOfContentsSidebarView(controller: controller) { anchorID in
                         controller.scrollSelectedTab(to: anchorID)
                     }
-                    .frame(minWidth: 220, idealWidth: 260, maxWidth: 340)
+                    .frame(minWidth: 190, idealWidth: 220, maxWidth: 300)
                 }
             }
         }
         .animation(.easeInOut(duration: 0.18), value: controller.isZenModeEnabled)
         .background(Theme.windowCanvas)
-        .frame(minWidth: 1100, minHeight: 720)
+        .frame(minWidth: 900, minHeight: 600)
         .onAppear {
             controller.loadLaunchArgumentsIfNeeded()
         }

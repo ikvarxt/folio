@@ -1,66 +1,62 @@
 import SwiftUI
 
+/*
+ * Utility empty state, not a landing page: name the app, offer the one action
+ * that gets you out of here, and list the two shortcuts worth knowing.
+ */
 struct WelcomeView: View {
     let openAction: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             Text("Markdown Previewer")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(Theme.ink)
-            Text("A fast macOS reading surface for large Markdown files, Mermaid diagrams, and multi-file tab workflows.")
-                .font(.system(size: 16, weight: .medium))
+
+            Text("Open a file to start reading.")
+                .font(.system(size: 14))
                 .foregroundStyle(Theme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
 
-            HStack(spacing: 12) {
-                Button(action: openAction) {
-                    Text("Open Markdown files")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(Theme.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(PressScaleButtonStyle())
-
-                Text("Command-O")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Theme.mutedInk)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(Theme.panelSurface)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Theme.line.opacity(0.6), lineWidth: 1)
+            Button(action: openAction) {
+                Text("Open files…")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, Theme.Spacing.lg)
+                    .padding(.vertical, Theme.Spacing.sm)
+                    .background(
+                        RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                            .fill(Theme.accent)
                     )
             }
+            .buttonStyle(PressScaleButtonStyle())
+            .padding(.top, Theme.Spacing.xxs)
 
-            VStack(alignment: .leading, spacing: 12) {
-                FeatureRow(title: "Large-file aware", detail: "Reads files through a memory-mapped loader before rendering so opening huge notes stays responsive.")
-                FeatureRow(title: "Mermaid built in", detail: "Mermaid code fences render directly inside the preview pane without extra setup.")
-                FeatureRow(title: "Tab deduplication", detail: "Opening an already-visible file focuses its tab instead of creating another copy.")
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                ShortcutRow(keys: "⌘O", detail: "Open one or more files")
+                ShortcutRow(keys: "⌘R", detail: "Reload every open file that changed on disk")
+                ShortcutRow(keys: "⌘Z", detail: "Hide both sidebars")
             }
+            .padding(.top, Theme.Spacing.sm)
         }
-        .padding(36)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: 380, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.panelSurface)
     }
 }
 
-private struct FeatureRow: View {
-    let title: String
+private struct ShortcutRow: View {
+    let keys: String
     let detail: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(Theme.ink)
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+            Text(keys)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.inkSoft)
+                .frame(width: 26, alignment: .leading)
+
             Text(detail)
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 11))
                 .foregroundStyle(Theme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
