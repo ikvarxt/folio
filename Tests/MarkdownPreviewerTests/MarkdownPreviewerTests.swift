@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import MarkdownPreviewer
 
@@ -539,6 +540,41 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertNil(tab.activeHeadingID)
     }
 
+    /*
+     * Finder opens files through an Apple Event that a SwiftUI-lifecycle app only
+     * surfaces as application(_:open:); the legacy application(_:openFiles:) is
+     * never called, which is why Open With used to launch an empty window. This
+     * pins the routing so the method cannot quietly go missing again.
+     */
+    @MainActor
+    func testAppDelegateOpensFilesHandedOverByFinder() async throws {
+        let controller = AppController.shared
+        closeAllTabs(in: controller)
+        defer { closeAllTabs(in: controller) }
+
+        let first = try makeTemporaryMarkdown("# Opened from Finder")
+        let second = try makeTemporaryMarkdown("# Second file")
+        defer {
+            try? FileManager.default.removeItem(at: first)
+            try? FileManager.default.removeItem(at: second)
+        }
+
+        let delegate = AppDelegate()
+        delegate.application(NSApplication.shared, open: [first, second])
+
+        // The delegate hops to the main actor, so the tabs do not exist yet.
+        try await waitForCondition("two tabs open") { controller.tabs.count == 2 }
+        try await waitForIdleRender(in: controller)
+
+        XCTAssertEqual(Set(controller.tabs.map(\.url)), Set([first, second]))
+
+        // Handing over an already-open file focuses it instead of duplicating.
+        delegate.application(NSApplication.shared, open: [first])
+        try await waitForCondition("first tab selected") { controller.selectedTab?.url == first }
+
+        XCTAssertEqual(controller.tabs.count, 2)
+    }
+
     // MARK: - Helpers
 
     private func makeTemporaryMarkdown(_ contents: String) throws -> URL {
@@ -562,6 +598,27 @@ final class MarkdownPreviewerTests: XCTestCase {
         for tab in controller.tabs {
             tab.updateFileSyncStatus(using: FileVersionSnapshot.capture(for: tab.url))
         }
+    }
+
+    /// Polls a controller-level condition. Needed where work hops to the main
+    /// actor, so the state under test does not exist on the next line.
+    @MainActor
+    private func waitForCondition(
+        _ description: String,
+        timeout: Duration = .seconds(5),
+        _ condition: () -> Bool
+    ) async throws {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+
+        while ContinuousClock.now < deadline {
+            if condition() {
+                return
+            }
+
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        XCTFail("Timed out waiting for: \(description)")
     }
 
     /// Polls until every open tab satisfies `condition`. The disk monitor runs on
