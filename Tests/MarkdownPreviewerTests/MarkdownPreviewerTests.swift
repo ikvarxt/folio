@@ -678,4 +678,41 @@ final class MarkdownPreviewerTests: XCTestCase {
         controller.toggleZenMode()
         XCTAssertFalse(controller.isZenModeEnabled)
     }
+
+    func testSidebarLayoutKeepsRequestedWidthsWhenTheWindowIsWideEnough() {
+        let layout = SidebarLayout(availableWidth: 1600, tabWidth: 320, outlineWidth: 300)
+
+        XCTAssertEqual(layout.tabWidth, 320)
+        XCTAssertEqual(layout.outlineWidth, 300)
+    }
+
+    func testSidebarLayoutShrinksBothSidebarsToProtectThePreview() {
+        let layout = SidebarLayout(availableWidth: 1000, tabWidth: 320, outlineWidth: 300)
+
+        XCTAssertLessThan(layout.tabWidth, 320)
+        XCTAssertLessThan(layout.outlineWidth, 300)
+        // Proportional shrinking lands a rounding error below the target, which
+        // is why this is an accuracy check and not a plain comparison.
+        XCTAssertEqual(
+            1000 - layout.tabWidth - layout.outlineWidth - SidebarMetrics.dividerHitWidth * 2,
+            SidebarMetrics.previewMinWidth,
+            accuracy: 0.5
+        )
+    }
+
+    /// The 900pt window minimum is what makes the floors reachable; if either
+    /// number moves without the other, a narrow window collapses a sidebar.
+    func testSidebarLayoutHoldsMinimumWidthsAtTheNarrowestWindow() {
+        let layout = SidebarLayout(availableWidth: 900, tabWidth: 320, outlineWidth: 300)
+
+        XCTAssertGreaterThanOrEqual(layout.tabWidth, SidebarMetrics.tabWidthRange.lowerBound)
+        XCTAssertGreaterThanOrEqual(layout.outlineWidth, SidebarMetrics.outlineWidthRange.lowerBound)
+    }
+
+    func testSidebarLayoutGivesTheWholeWindowToThePreviewInZenMode() {
+        let layout = SidebarLayout(availableWidth: 900, tabWidth: 0, outlineWidth: 0)
+
+        XCTAssertEqual(layout.tabWidth, 0)
+        XCTAssertEqual(layout.outlineWidth, 0)
+    }
 }

@@ -7,9 +7,15 @@ APP_NAME="MarkdownPreviewer"
 APP_DIR="$ROOT_DIR/dist/$APP_NAME.app"
 
 cd "$ROOT_DIR"
+BIN_DIR="$(swift build -c "$CONFIGURATION" --show-bin-path)"
+
+# The packaging step below copies every bundle it finds here, and SwiftPM never
+# removes the ones a dropped dependency left behind. Clearing them first means
+# the build re-creates exactly the set the current dependency graph declares.
+rm -rf "$BIN_DIR"/*.bundle(N)
+
 swift build -c "$CONFIGURATION"
 
-BIN_DIR="$(swift build -c "$CONFIGURATION" --show-bin-path)"
 EXECUTABLE="$BIN_DIR/$APP_NAME"
 
 rm -rf "$APP_DIR"
