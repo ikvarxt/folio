@@ -9,6 +9,7 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertFalse(PreviewTemplate.resourceText(named: "mermaid.min", ext: "js", subdirectory: "Vendor").isEmpty)
         XCTAssertFalse(PreviewTemplate.resourceText(named: "highlight", ext: "js", subdirectory: "Vendor").isEmpty)
         XCTAssertFalse(PreviewTemplate.resourceText(named: "highlight", ext: "css", subdirectory: "Vendor").isEmpty)
+        XCTAssertFalse(PreviewTemplate.resourceText(named: "highlight-dark", ext: "css", subdirectory: "Vendor").isEmpty)
     }
 
     func testPreviewTemplateInlinesHighlightTheme() {
@@ -20,6 +21,71 @@ final class MarkdownPreviewerTests: XCTestCase {
 
         XCTAssertTrue(html.contains(highlightCSS))
         XCTAssertTrue(html.contains("language-swift"))
+    }
+
+    /*
+     * WebKit dispatches no matchMedia change event when the appearance is
+     * inherited from the window, which is how a system-wide switch arrives, so
+     * Mermaid can only be redrawn if the native side forwards the change.
+     */
+    @MainActor
+    func testWebViewForwardsAppearanceInheritedFromItsWindow() {
+        _ = NSApplication.shared
+
+        let webView = AppearanceAwareWebView(frame: NSRect(x: 0, y: 0, width: 100, height: 100))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.contentView?.addSubview(webView)
+        window.appearance = NSAppearance(named: .aqua)
+
+        var observed: [Bool] = []
+        webView.onEffectiveAppearanceChange = { observed.append($0) }
+
+        window.appearance = NSAppearance(named: .darkAqua)
+        settle()
+        window.appearance = NSAppearance(named: .aqua)
+        settle()
+
+        XCTAssertEqual(observed, [true, false])
+    }
+
+    /// AppKit delivers appearance changes on the run loop, not inline.
+    private func settle() {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+    }
+
+    func testPreviewCSSCarriesADarkPaletteForTheSystemAppearance() {
+        let previewCSS = PreviewTemplate.resourceText(named: "preview", ext: "css", subdirectory: "Preview")
+
+        // Both halves matter: the opt-in makes WebKit switch its own defaults,
+        // the media block is where every colour token is restated.
+        XCTAssertTrue(previewCSS.contains("color-scheme: light dark"))
+        XCTAssertTrue(previewCSS.contains("@media (prefers-color-scheme: dark)"))
+    }
+
+    /*
+     * The vendored themes carry `pre code.hljs { padding: 1em }` at the same
+     * specificity as preview.css, so this ordering is the only thing keeping a
+     * dark-mode code block from re-padding itself.
+     */
+    func testDarkHighlightThemeIsScopedAndOverriddenByPreviewCSS() {
+        let darkTheme = PreviewTemplate.resourceText(named: "highlight-dark", ext: "css", subdirectory: "Vendor")
+        let previewCSS = PreviewTemplate.resourceText(named: "preview", ext: "css", subdirectory: "Preview")
+        let html = PreviewTemplate.makeDocumentHTML(title: "Demo", bodyHTML: "")
+
+        XCTAssertTrue(html.contains("@media (prefers-color-scheme: dark) {\n\(darkTheme)"))
+
+        guard let darkRange = html.range(of: darkTheme),
+              let previewRange = html.range(of: previewCSS) else {
+            return XCTFail("Both stylesheets should be inlined in the document")
+        }
+
+        XCTAssertTrue(darkRange.upperBound <= previewRange.lowerBound)
     }
 
     func testRendererOutputsHTMLTableForPipeTableMarkdown() throws {

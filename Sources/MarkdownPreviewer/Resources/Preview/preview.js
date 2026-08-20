@@ -8,25 +8,53 @@
     ["shell", "bash"],
   ]);
 
-  // Warm-paper palette mirroring preview.css, so diagrams sit on the same
-  // surface as the prose instead of arriving in Mermaid's grey default theme.
-  const mermaidTheme = {
-    background: "#fdfcf8",
-    primaryColor: "#f6f1e6",
-    primaryTextColor: "#362f27",
-    primaryBorderColor: "#c9bda8",
-    secondaryColor: "#f1ece0",
-    tertiaryColor: "#faf7f0",
-    mainBkg: "#f6f1e6",
-    nodeBorder: "#c9bda8",
-    clusterBkg: "#faf7f0",
-    clusterBorder: "#d8cfbe",
-    lineColor: "#9d8b71",
-    textColor: "#362f27",
-    edgeLabelBackground: "#fdfcf8",
+  const mermaidTypography = {
     fontFamily: '"Iowan Old Style", "Palatino Linotype", "Songti SC", serif',
     fontSize: "14px",
   };
+
+  /*
+   * Warm-paper palettes mirroring preview.css, so diagrams sit on the same
+   * surface as the prose instead of arriving in Mermaid's grey default theme.
+   * Mermaid derives shades from these with a colour library that does not parse
+   * oklch(), so they stay hex here rather than reading the CSS custom properties.
+   */
+  const mermaidPalettes = {
+    light: {
+      ...mermaidTypography,
+      background: "#fdfcf8",
+      primaryColor: "#f6f1e6",
+      primaryTextColor: "#362f27",
+      primaryBorderColor: "#c9bda8",
+      secondaryColor: "#f1ece0",
+      tertiaryColor: "#faf7f0",
+      mainBkg: "#f6f1e6",
+      nodeBorder: "#c9bda8",
+      clusterBkg: "#faf7f0",
+      clusterBorder: "#d8cfbe",
+      lineColor: "#9d8b71",
+      textColor: "#362f27",
+      edgeLabelBackground: "#fdfcf8",
+    },
+    dark: {
+      ...mermaidTypography,
+      background: "#29251f",
+      primaryColor: "#342e26",
+      primaryTextColor: "#ece5da",
+      primaryBorderColor: "#5b5042",
+      secondaryColor: "#3b3429",
+      tertiaryColor: "#2f2a23",
+      mainBkg: "#342e26",
+      nodeBorder: "#5b5042",
+      clusterBkg: "#2f2a23",
+      clusterBorder: "#4a4136",
+      lineColor: "#9b8b74",
+      textColor: "#ece5da",
+      edgeLabelBackground: "#29251f",
+    },
+  };
+
+  const darkSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   const activeHeadingHandler = window.webkit?.messageHandlers?.activeHeading;
 
@@ -35,7 +63,8 @@
   let headingIndex = [];
   let lastReportedHeadingID = null;
   let isScrollTrackingBound = false;
-  let isMermaidConfigured = false;
+  let configuredMermaidScheme = null;
+  let hostScheme = null;
   let cachedAnchorOffset = null;
 
   function slugify(input) {
@@ -67,6 +96,9 @@
       const wrapper = document.createElement("div");
       wrapper.className = "mermaid diagram-surface";
       wrapper.textContent = block.textContent || "";
+      // Mermaid overwrites the node with baked SVG, colours included, so the
+      // source has to be kept to redraw the diagram in the other palette.
+      wrapper.dataset.mermaidSource = wrapper.textContent;
       pre.replaceWith(wrapper);
       nodes.push(wrapper);
     });
@@ -312,14 +344,16 @@
       return;
     }
 
-    // Configuration is global and does not change between renders.
-    if (!isMermaidConfigured) {
-      isMermaidConfigured = true;
+    // Configuration is global; only a scheme switch makes it stale.
+    const scheme = currentScheme();
+
+    if (configuredMermaidScheme !== scheme) {
+      configuredMermaidScheme = scheme;
       window.mermaid.initialize({
         startOnLoad: false,
         securityLevel: "loose",
         theme: "base",
-        themeVariables: mermaidTheme,
+        themeVariables: mermaidPalettes[scheme],
         flowchart: {
           useMaxWidth: true,
         },
@@ -333,6 +367,31 @@
         node.classList.add("mermaid-failed");
       });
     }
+  }
+
+  /*
+   * The host is the authority once it has spoken, because the media query alone
+   * cannot be observed reliably: see applyColorScheme below.
+   */
+  function currentScheme() {
+    return hostScheme || (darkSchemeQuery.matches ? "dark" : "light");
+  }
+
+  /*
+   * Prose and code follow the system appearance through CSS alone. Diagrams
+   * cannot: their colours are already inside the generated SVG, so they have to
+   * be reset to source and drawn again.
+   */
+  async function redrawMermaidForScheme() {
+    const nodes = Array.from(document.querySelectorAll(".mermaid[data-mermaid-source]"));
+
+    nodes.forEach((node) => {
+      node.removeAttribute("data-processed");
+      node.classList.remove("mermaid-failed");
+      node.textContent = node.dataset.mermaidSource || "";
+    });
+
+    await renderMermaid(nodes);
   }
 
   /// Everything that has to run over freshly inserted markup.
@@ -416,6 +475,21 @@
 
       return true;
     },
+    /*
+     * Called by the host on an appearance change, and the only signal that
+     * arrives on every path: WebKit dispatches no matchMedia change event when
+     * the appearance is inherited from the window rather than set on the web
+     * view, which is exactly how a system-wide switch reaches this app.
+     */
+    applyColorScheme(isDark) {
+      hostScheme = isDark ? "dark" : "light";
+
+      if (configuredMermaidScheme === hostScheme) {
+        return;
+      }
+
+      return redrawMermaidForScheme();
+    },
     restoreScroll(position) {
       window.scrollTo({ top: Number(position) || 0, behavior: "auto" });
     },
@@ -432,6 +506,19 @@
       });
     },
   };
+
+  /*
+   * Backstop for the paths WebKit does notify — an appearance set directly on
+   * the web view, or a future release that fixes the inherited case. Bound at
+   * load rather than in boot(): the page outlives every document swap.
+   */
+  darkSchemeQuery.addEventListener("change", () => {
+    if (configuredMermaidScheme === currentScheme()) {
+      return;
+    }
+
+    void redrawMermaidForScheme();
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {

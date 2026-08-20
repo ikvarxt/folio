@@ -2,6 +2,24 @@ import AppKit
 import SwiftUI
 import WebKit
 
+/*
+ * WebKit re-evaluates prefers-color-scheme when the appearance is inherited
+ * from the window, but dispatches no matchMedia change event on that path, so
+ * page scripts never learn the scheme moved. CSS therefore switches on its own
+ * and Mermaid, whose colours are baked into generated SVG, does not. The host
+ * hands that signal over instead.
+ */
+final class AppearanceAwareWebView: WKWebView {
+    var onEffectiveAppearanceChange: ((Bool) -> Void)?
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+
+        let isDark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        onEffectiveAppearanceChange?(isDark)
+    }
+}
+
 struct PreviewWebView: NSViewRepresentable {
     @ObservedObject var controller: AppController
     @ObservedObject var tab: DocumentTab
@@ -69,13 +87,35 @@ struct PreviewWebView: NSViewRepresentable {
             let configuration = WKWebViewConfiguration()
             configuration.userContentController = userContentController
 
-            let webView = WKWebView(frame: .zero, configuration: configuration)
+            let webView = AppearanceAwareWebView(frame: .zero, configuration: configuration)
             webView.navigationDelegate = self
             webView.allowsBackForwardNavigationGestures = false
             webView.setValue(false, forKey: "drawsBackground")
             webView.underPageBackgroundColor = .clear
+            webView.onEffectiveAppearanceChange = { [weak webView] isDark in
+                guard let webView else {
+                    return
+                }
+
+                Self.applyColorScheme(isDark: isDark, on: webView)
+            }
 
             return webView
+        }
+
+        /*
+         * Fire and forget: the call is a no-op before the first document loads,
+         * and the page picks the right palette from the media query on its own
+         * when it does. Only a later switch needs telling.
+         */
+        private static func applyColorScheme(isDark: Bool, on webView: WKWebView) {
+            webView.callAsyncJavaScript(
+                "window.markdownPreview?.applyColorScheme(isDark);",
+                arguments: ["isDark": isDark],
+                in: nil,
+                in: .page,
+                completionHandler: nil
+            )
         }
 
         func sync(with tab: DocumentTab?, webView: WKWebView) {

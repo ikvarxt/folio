@@ -20,7 +20,7 @@ struct WelcomeView: View {
             Button(action: openAction) {
                 Text("Open files…")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .padding(.horizontal, Theme.Spacing.lg)
                     .padding(.vertical, Theme.Spacing.sm)
                     .background(

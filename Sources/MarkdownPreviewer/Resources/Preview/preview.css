@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 
   /* Surfaces: warm paper, never pure white. */
   --canvas: oklch(0.968 0.006 90);
@@ -20,6 +20,15 @@
   /* Signal. */
   --accent: oklch(0.55 0.13 45);
   --accent-quiet: oklch(0.93 0.028 70);
+  --on-accent: oklch(0.99 0.005 90);
+  --danger: oklch(0.45 0.14 30);
+
+  /* Depth and edges. Every colour below is per-scheme, none are literals. */
+  --shadow-near: rgba(36, 30, 22, 0.11);
+  --shadow-far: rgba(36, 30, 22, 0.04);
+  --sheet-ring: transparent;
+  --edge-shade: rgba(58, 44, 26, 0.16);
+  --media-ring: rgba(0, 0, 0, 0.1);
 
   /* Radius scale: 4 tiers, committed. */
   --r-sm: 5px;
@@ -39,6 +48,43 @@
 
   --type-serif: "Iowan Old Style", "Palatino Linotype", "Baskerville", "Times New Roman", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
   --type-mono: "SF Mono", "JetBrains Mono", "Menlo", "Roboto Mono", monospace;
+}
+
+/*
+ * Night palette: the same warm hue rotated down in lightness, not a neutral
+ * grey, so the sheet still reads as paper. Only the colour tokens are restated;
+ * every rule below stays scheme-agnostic.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: oklch(0.205 0.008 75);
+    --paper: oklch(0.245 0.009 75);
+    --quote-tint: oklch(0.285 0.019 70);
+    --code-bg: oklch(0.222 0.01 75);
+    --row-tint: oklch(0.268 0.008 75);
+
+    --ink: oklch(0.925 0.012 85);
+    --ink-soft: oklch(0.83 0.014 85);
+    --muted: oklch(0.685 0.015 80);
+
+    --rule: oklch(0.33 0.012 75);
+    --rule-strong: oklch(0.45 0.016 75);
+
+    --accent: oklch(0.78 0.115 62);
+    --accent-quiet: oklch(0.36 0.05 62);
+    --on-accent: oklch(0.22 0.015 70);
+    --danger: oklch(0.72 0.14 30);
+
+    /*
+     * A drop shadow does almost nothing against a dark canvas, so the sheet
+     * gets a hairline ring to hold its edge and the shadow only adds weight.
+     */
+    --shadow-near: rgba(0, 0, 0, 0.5);
+    --shadow-far: rgba(0, 0, 0, 0.34);
+    --sheet-ring: oklch(0.32 0.011 75);
+    --edge-shade: rgba(0, 0, 0, 0.45);
+    --media-ring: rgba(255, 255, 255, 0.12);
+  }
 }
 
 html {
@@ -68,8 +114,9 @@ body {
   background: var(--paper);
   border-radius: var(--r-xl);
   box-shadow:
-    0 1px 3px rgba(36, 30, 22, 0.11),
-    0 18px 34px rgba(36, 30, 22, 0.04);
+    0 0 0 1px var(--sheet-ring),
+    0 1px 3px var(--shadow-near),
+    0 18px 34px var(--shadow-far);
 }
 
 .document > pre,
@@ -248,8 +295,8 @@ pre {
   background:
     linear-gradient(to right, var(--code-bg) 70%, transparent) left center / 34px 100% no-repeat local,
     linear-gradient(to left, var(--code-bg) 70%, transparent) right center / 34px 100% no-repeat local,
-    linear-gradient(to right, rgba(58, 44, 26, 0.16), transparent) left center / 22px 100% no-repeat scroll,
-    linear-gradient(to left, rgba(58, 44, 26, 0.16), transparent) right center / 22px 100% no-repeat scroll,
+    linear-gradient(to right, var(--edge-shade), transparent) left center / 22px 100% no-repeat scroll,
+    linear-gradient(to left, var(--edge-shade), transparent) right center / 22px 100% no-repeat scroll,
     var(--code-bg);
   border: 1px solid var(--rule);
   border-radius: var(--r-md);
@@ -506,7 +553,7 @@ li > input[type="checkbox"]:checked::after {
   top: 0.08em;
   width: 0.24em;
   height: 0.46em;
-  border: solid oklch(0.99 0.005 90);
+  border: solid var(--on-accent);
   border-width: 0 1.6px 1.6px 0;
   transform: rotate(42deg);
 }
@@ -562,7 +609,7 @@ img {
   max-width: 100%;
   height: auto;
   border-radius: var(--r-lg);
-  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline: 1px solid var(--media-ring);
   outline-offset: -1px;
 }
 
@@ -587,7 +634,7 @@ img {
   text-align: left;
   font-family: var(--type-mono);
   font-size: 0.82rem;
-  color: oklch(0.45 0.14 30);
+  color: var(--danger);
 }
 
 /* ---------- Responsive & motion ---------- */

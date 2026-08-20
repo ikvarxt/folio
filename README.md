@@ -8,6 +8,7 @@ Native macOS Markdown previewer built with SwiftUI and WebKit. It is designed fo
 - Mermaid diagrams from fenced code blocks tagged `mermaid`
 - Tab deduplication: opening an already-open file focuses the existing tab
 - Three-pane layout with resizable sidebar and TOC pane
+- Light and dark presentation that follows the macOS system appearance, diagrams included
 - Finder reveal, reload, and file-open commands
 - Relative local file navigation for Markdown links
 

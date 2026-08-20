@@ -9,8 +9,26 @@ enum PreviewTemplate {
         resourceText(named: "highlight", ext: "css", subdirectory: "Vendor")
     }()
 
+    /*
+     * Vendored themes ship as unconditional rules, so the night one is scoped to
+     * the media query here rather than by editing the file: that keeps it
+     * byte-identical to its upstream release and re-vendorable in one copy.
+     */
+    private static let highlightDarkCSS = {
+        let theme = resourceText(named: "highlight-dark", ext: "css", subdirectory: "Vendor")
+
+        return theme.isEmpty ? "" : "@media (prefers-color-scheme: dark) {\n\(theme)\n}"
+    }()
+
+    /*
+     * preview.css comes last on purpose: both vendored themes carry layout rules
+     * of their own (`pre code.hljs { padding: 1em }`) at the same specificity as
+     * the ones here, so only source order keeps code blocks from re-padding
+     * themselves once the dark theme applies.
+     */
     private static let documentCSS = [
         highlightCSS,
+        highlightDarkCSS,
         previewCSS,
     ]
     .filter { !$0.isEmpty }
