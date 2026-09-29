@@ -11,6 +11,8 @@ Native macOS Markdown previewer built with SwiftUI and WebKit. It is designed fo
 - Light and dark presentation that follows the macOS system appearance, diagrams included
 - Finder reveal, reload, and file-open commands
 - Relative local file navigation for Markdown links
+- Local images referenced by relative path, inline or as blocks
+- Drag files into the window to open them; drop or paste (`⌘V`) text to preview it as a temporary document
 
 ## Build
 

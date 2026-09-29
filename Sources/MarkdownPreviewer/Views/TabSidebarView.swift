@@ -89,7 +89,7 @@ struct TabSidebarView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Theme.ink)
 
-            Text("Press ⌘O, or drop a Markdown file on the app icon. Reopening a file focuses its tab instead of duplicating it.")
+            Text("Press ⌘O, drop a Markdown file here or on the app icon, or press ⌘V to preview the clipboard. Reopening a file focuses its tab instead of duplicating it.")
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)

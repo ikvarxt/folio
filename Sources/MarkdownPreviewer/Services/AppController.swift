@@ -18,6 +18,7 @@ final class AppController: ObservableObject {
     @Published private(set) var tabs: [DocumentTab] = []
     @Published var selectedTabID: DocumentTab.ID?
     @Published private(set) var isZenModeEnabled = false
+    @Published var isDropTargeted = false
 
     /*
      * On by default: this app is read-only and normally sits beside an editor,
@@ -36,6 +37,9 @@ final class AppController: ObservableObject {
         let defaults = UserDefaults.standard
         defaults.register(defaults: [PreferenceKey.autoReload: true])
         isAutoReloadEnabled = defaults.bool(forKey: PreferenceKey.autoReload)
+
+        // Leftovers from a session that crashed before it could clean up.
+        ScratchDocumentStore.removeAll()
 
         startFileVersionMonitoring()
     }
@@ -103,6 +107,74 @@ final class AppController: ObservableObject {
         }
     }
 
+    /// Returns false when there was nothing usable, so callers can beep.
+    @discardableResult
+    func open(_ content: IncomingContent) -> Bool {
+        switch content {
+        case .files(let urls):
+            openFiles(urls)
+        case .text(let text):
+            do {
+                openFiles([try ScratchDocumentStore.makeDocument(text: text)])
+            } catch {
+                NSAlert(error: error).runModal()
+                return false
+            }
+        }
+
+        return true
+    }
+
+    func pasteAsDocument() {
+        guard let content = IncomingContent.read(from: .general, acceptingText: true), open(content) else {
+            NSSound.beep()
+            return
+        }
+    }
+
+    func openDroppedItems(_ providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.filter { $0.canLoadObject(ofClass: URL.self) }
+        let textProvider = providers.first { $0.canLoadObject(ofClass: String.self) }
+
+        guard !fileProviders.isEmpty || textProvider != nil else {
+            return false
+        }
+
+        Task {
+            var fileURLs: [URL] = []
+            var text: String?
+
+            if fileProviders.isEmpty, let textProvider {
+                text = await Self.loadObject(String.self, from: textProvider)
+            } else {
+                for provider in fileProviders {
+                    if let url = await Self.loadObject(URL.self, from: provider), url.isFileURL {
+                        fileURLs.append(url)
+                    }
+                }
+            }
+
+            if let content = IncomingContent.make(fileURLs: fileURLs, text: text) {
+                open(content)
+            } else {
+                NSSound.beep()
+            }
+        }
+
+        return true
+    }
+
+    private static func loadObject<T: _ObjectiveCBridgeable & Sendable>(
+        _ type: T.Type,
+        from provider: NSItemProvider
+    ) async -> T? where T._ObjectiveCType: NSItemProviderReading {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: type) { object, _ in
+                continuation.resume(returning: object)
+            }
+        }
+    }
+
     func selectTab(_ tabID: DocumentTab.ID) {
         // Row taps can race a close on the same row; never point the selection
         // at a tab that is already gone or the preview would blank out.
@@ -129,7 +201,11 @@ final class AppController: ObservableObject {
             return
         }
 
-        tabs.remove(at: index)
+        let removedTab = tabs.remove(at: index)
+
+        if removedTab.isTemporary {
+            ScratchDocumentStore.remove(removedTab.url)
+        }
 
         if selectedTabID == id {
             let nextIndex = min(index, tabs.count - 1)

@@ -21,6 +21,7 @@ final class DocumentTab: ObservableObject, Identifiable {
 
     let id = UUID()
     let url: URL
+    let isTemporary: Bool
 
     @Published private(set) var title: String
     @Published private(set) var subtitle: String
@@ -40,8 +41,9 @@ final class DocumentTab: ObservableObject, Identifiable {
 
     init(url: URL) {
         self.url = url.standardizedFileURL
+        self.isTemporary = ScratchDocumentStore.contains(url)
         self.title = url.lastPathComponent
-        self.subtitle = url.deletingLastPathComponent().tildePath
+        self.subtitle = isTemporary ? "Temporary · deleted on close" : url.deletingLastPathComponent().tildePath
     }
 
     var fileDetailsText: String {

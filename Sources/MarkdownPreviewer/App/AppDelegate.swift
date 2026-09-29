@@ -14,4 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppController.shared.openFiles(urls)
         }
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        ScratchDocumentStore.removeAll()
+    }
 }

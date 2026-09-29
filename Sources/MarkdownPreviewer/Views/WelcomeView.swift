@@ -13,7 +13,7 @@ struct WelcomeView: View {
                 .font(.system(size: 26, weight: .semibold))
                 .foregroundStyle(Theme.ink)
 
-            Text("Open a file to start reading.")
+            Text("Open a file, drop one here, or paste text to start reading.")
                 .font(.system(size: 14))
                 .foregroundStyle(Theme.mutedInk)
 
@@ -33,6 +33,7 @@ struct WelcomeView: View {
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 ShortcutRow(keys: "⌘O", detail: "Open one or more files")
+                ShortcutRow(keys: "⌘V", detail: "Open the clipboard as a temporary document")
                 ShortcutRow(keys: "⌘R", detail: "Reload every open file that changed on disk")
                 ShortcutRow(keys: "⌘Z", detail: "Hide both sidebars")
             }

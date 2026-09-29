@@ -11,12 +11,74 @@ import WebKit
  */
 final class AppearanceAwareWebView: WKWebView {
     var onEffectiveAppearanceChange: ((Bool) -> Void)?
+    var onDropTargetChange: ((Bool) -> Void)?
+    var onDrop: ((IncomingContent) -> Void)?
+
+    private var pendingDrop: IncomingContent?
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
 
         let isDark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         onEffectiveAppearanceChange?(isDark)
+    }
+
+    /*
+     * WebKit's own drop handling navigates the view to a dropped file, which
+     * would replace the preview with the raw source. Drops the app can open are
+     * taken here instead; anything else still goes to WebKit. Text only counts
+     * when it comes from another app, so dragging a selection within the page
+     * does not spawn a document.
+     */
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        pendingDrop = IncomingContent.read(
+            from: sender.draggingPasteboard,
+            acceptingText: sender.draggingSource == nil
+        )
+
+        guard pendingDrop != nil else {
+            return super.draggingEntered(sender)
+        }
+
+        onDropTargetChange?(true)
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        pendingDrop != nil ? .copy : super.draggingUpdated(sender)
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        guard pendingDrop != nil else {
+            super.draggingExited(sender)
+            return
+        }
+
+        pendingDrop = nil
+        onDropTargetChange?(false)
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        pendingDrop != nil || super.prepareForDragOperation(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard let content = pendingDrop else {
+            return super.performDragOperation(sender)
+        }
+
+        onDropTargetChange?(false)
+        onDrop?(content)
+        return true
+    }
+
+    override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        guard pendingDrop != nil else {
+            super.concludeDragOperation(sender)
+            return
+        }
+
+        pendingDrop = nil
     }
 }
 
@@ -99,6 +161,12 @@ struct PreviewWebView: NSViewRepresentable {
                 }
 
                 Self.applyColorScheme(isDark: isDark, on: webView)
+            }
+            webView.onDropTargetChange = { [weak self] isTargeted in
+                self?.controller?.isDropTargeted = isTargeted
+            }
+            webView.onDrop = { [weak self] content in
+                self?.controller?.open(content)
             }
 
             return webView

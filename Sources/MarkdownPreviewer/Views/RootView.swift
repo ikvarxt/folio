@@ -59,6 +59,15 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.18), value: controller.isZenModeEnabled)
         .background(Theme.windowCanvas)
+        .onDrop(of: [.fileURL, .plainText], isTargeted: $controller.isDropTargeted) { providers in
+            controller.openDroppedItems(providers)
+        }
+        .overlay {
+            if controller.isDropTargeted {
+                DropTargetHighlight()
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: controller.isDropTargeted)
         .frame(minWidth: 900, minHeight: 600)
         .onAppear {
             controller.loadLaunchArgumentsIfNeeded()
@@ -71,5 +80,19 @@ struct RootView: View {
             tabWidth: controller.isZenModeEnabled ? 0 : CGFloat(tabSidebarWidth),
             outlineWidth: controller.isZenModeEnabled ? 0 : CGFloat(outlineSidebarWidth)
         )
+    }
+}
+
+private struct DropTargetHighlight: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+            .strokeBorder(Theme.accent, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                    .fill(Theme.accentSoft.opacity(0.35))
+            )
+            .padding(Theme.Spacing.xs)
+            .allowsHitTesting(false)
+            .transition(.opacity)
     }
 }

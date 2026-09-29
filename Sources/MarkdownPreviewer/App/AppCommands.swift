@@ -33,6 +33,28 @@ struct AppCommands: Commands {
             .keyboardShortcut("o", modifiers: [.command])
         }
 
+        /*
+         * Nothing in this window takes text input, so ⌘V is free to mean "open
+         * the clipboard". Copy and Select All still go down the responder
+         * chain, where the preview's web view handles them.
+         */
+        CommandGroup(replacing: .pasteboard) {
+            Button("Copy") {
+                NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("c", modifiers: [.command])
+
+            Button("Paste as New Document") {
+                controller.pasteAsDocument()
+            }
+            .keyboardShortcut("v", modifiers: [.command])
+
+            Button("Select All") {
+                NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+            }
+            .keyboardShortcut("a", modifiers: [.command])
+        }
+
         CommandMenu("Preview") {
             Button(reloadTitle) {
                 controller.reloadOutdatedTabs()
