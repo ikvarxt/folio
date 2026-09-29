@@ -132,26 +132,30 @@ final class AppController: ObservableObject {
         }
     }
 
+    /*
+     * Files are resolved before text is considered. A Finder or Dock item's
+     * provider often advertises only the file's own type, and Markdown
+     * conforms to plain text, so loading it as a String returns the contents
+     * and the drop would open as a scratch copy instead of the file itself.
+     */
     func openDroppedItems(_ providers: [NSItemProvider]) -> Bool {
-        let fileProviders = providers.filter { $0.canLoadObject(ofClass: URL.self) }
-        let textProvider = providers.first { $0.canLoadObject(ofClass: String.self) }
-
-        guard !fileProviders.isEmpty || textProvider != nil else {
+        guard !providers.isEmpty else {
             return false
         }
 
         Task {
             var fileURLs: [URL] = []
+
+            for provider in providers {
+                if let url = await Self.loadFileURL(from: provider) {
+                    fileURLs.append(url)
+                }
+            }
+
             var text: String?
 
-            if fileProviders.isEmpty, let textProvider {
-                text = await Self.loadObject(String.self, from: textProvider)
-            } else {
-                for provider in fileProviders {
-                    if let url = await Self.loadObject(URL.self, from: provider), url.isFileURL {
-                        fileURLs.append(url)
-                    }
-                }
+            if fileURLs.isEmpty, let provider = providers.first(where: { $0.canLoadObject(ofClass: String.self) }) {
+                text = await Self.loadText(from: provider)
             }
 
             if let content = IncomingContent.make(fileURLs: fileURLs, text: text) {
@@ -164,13 +168,39 @@ final class AppController: ObservableObject {
         return true
     }
 
-    private static func loadObject<T: _ObjectiveCBridgeable & Sendable>(
-        _ type: T.Type,
-        from provider: NSItemProvider
-    ) async -> T? where T._ObjectiveCType: NSItemProviderReading {
+    private static func loadFileURL(from provider: NSItemProvider) async -> URL? {
+        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier),
+           let url = await loadURLItem(from: provider), url.isFileURL {
+            return url
+        }
+
+        // Only an in-place representation is the original file; a copy would
+        // live in a temporary directory that is deleted once loading returns.
+        guard let typeIdentifier = provider.registeredTypeIdentifiers.first(where: {
+            UTType($0)?.conforms(to: .data) == true
+        }) else {
+            return nil
+        }
+
+        return await withCheckedContinuation { continuation in
+            _ = provider.loadInPlaceFileRepresentation(forTypeIdentifier: typeIdentifier) { url, isInPlace, _ in
+                continuation.resume(returning: isInPlace ? url : nil)
+            }
+        }
+    }
+
+    private static func loadURLItem(from provider: NSItemProvider) async -> URL? {
         await withCheckedContinuation { continuation in
-            _ = provider.loadObject(ofClass: type) { object, _ in
-                continuation.resume(returning: object)
+            _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
+                continuation.resume(returning: data.flatMap { URL(dataRepresentation: $0, relativeTo: nil) })
+            }
+        }
+    }
+
+    private static func loadText(from provider: NSItemProvider) async -> String? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: String.self) { text, _ in
+                continuation.resume(returning: text)
             }
         }
     }
