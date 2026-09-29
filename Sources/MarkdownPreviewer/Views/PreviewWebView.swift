@@ -86,6 +86,7 @@ struct PreviewWebView: NSViewRepresentable {
 
             let configuration = WKWebViewConfiguration()
             configuration.userContentController = userContentController
+            configuration.setURLSchemeHandler(LocalFileSchemeHandler(), forURLScheme: LocalFileSchemeHandler.scheme)
 
             let webView = AppearanceAwareWebView(frame: .zero, configuration: configuration)
             webView.navigationDelegate = self
@@ -166,7 +167,10 @@ struct PreviewWebView: NSViewRepresentable {
             isPageLoaded = false
             pendingRestoreScroll = tab.savedScrollPosition
             lastScrollRequestToken = nil
-            webView.loadHTMLString(tab.renderedHTML ?? "", baseURL: tab.url.deletingLastPathComponent())
+            webView.loadHTMLString(
+                tab.renderedHTML ?? "",
+                baseURL: LocalFileSchemeHandler.url(for: tab.url.deletingLastPathComponent())
+            )
         }
 
         private func replaceBody(_ bodyHTML: String, for tab: DocumentTab, webView: WKWebView) {
@@ -266,9 +270,15 @@ struct PreviewWebView: NSViewRepresentable {
                 return .allow
             }
 
-            if url.isFileURL, url.isMarkdownLike {
-                await MainActor.run {
-                    controller?.openFiles([url])
+            // Relative links resolve against the base URL, so local ones arrive
+            // on the preview scheme rather than as file URLs.
+            if let fileURL = LocalFileSchemeHandler.fileURL(for: url) ?? (url.isFileURL ? url : nil) {
+                if fileURL.isMarkdownLike {
+                    await MainActor.run {
+                        controller?.openFiles([fileURL])
+                    }
+                } else {
+                    NSWorkspace.shared.open(fileURL)
                 }
                 return .cancel
             }

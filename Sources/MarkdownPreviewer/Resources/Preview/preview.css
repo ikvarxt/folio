@@ -605,7 +605,8 @@ hr {
 }
 
 img {
-  display: block;
+  display: inline-block;
+  vertical-align: middle;
   max-width: 100%;
   height: auto;
   border-radius: var(--r-lg);
