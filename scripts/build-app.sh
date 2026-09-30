@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIGURATION="${1:-release}"
-APP_NAME="MarkdownPreviewer"
+APP_NAME="Folio"
 APP_DIR="$ROOT_DIR/dist/$APP_NAME.app"
 
 cd "$ROOT_DIR"

@@ -1,6 +1,6 @@
-# Markdown Previewer
+# Folio
 
-Native macOS Markdown previewer built with SwiftUI and WebKit. Open files are tabs in the left sidebar, the preview sits in the center, and the right sidebar is an outline of the document's headings.
+A native macOS Markdown reader built with SwiftUI and WebKit. Open files are tabs in the left sidebar, the preview sits in the center, and the right sidebar is an outline of the document's headings.
 
 ## What it supports
 
@@ -23,7 +23,7 @@ Native macOS Markdown previewer built with SwiftUI and WebKit. Open files are ta
 
 The packaged app is emitted to:
 
-`dist/MarkdownPreviewer.app`
+`dist/Folio.app`
 
 ## Run during development
 
@@ -34,5 +34,5 @@ The packaged app is emitted to:
 You can also launch the binary directly with file paths:
 
 ```bash
-swift run MarkdownPreviewer /path/to/file.md
+swift run Folio /path/to/file.md
 ```

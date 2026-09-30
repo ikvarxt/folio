@@ -1,8 +1,8 @@
 import AppKit
 import XCTest
-@testable import MarkdownPreviewer
+@testable import Folio
 
-final class MarkdownPreviewerTests: XCTestCase {
+final class FolioTests: XCTestCase {
     func testPreviewAssetsLoadFromBundledFallbackLocations() {
         XCTAssertFalse(PreviewTemplate.resourceText(named: "preview", ext: "css", subdirectory: "Preview").isEmpty)
         XCTAssertFalse(PreviewTemplate.resourceText(named: "preview", ext: "js", subdirectory: "Preview").isEmpty)

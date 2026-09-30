@@ -1,4 +1,4 @@
-# Markdown Previewer demo
+# Folio demo
 
 This file is here so you can immediately verify the app shell, heading outline, code blocks, and Mermaid rendering.
 

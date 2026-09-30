@@ -9,7 +9,7 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
-            Text("Markdown Previewer")
+            Text("Folio")
                 .font(.system(size: 28, weight: .semibold, design: .serif))
                 .foregroundStyle(Theme.ink)
 

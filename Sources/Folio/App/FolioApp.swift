@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct MarkdownPreviewerApp: App {
+struct FolioApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var controller = AppController.shared
 
@@ -12,7 +12,7 @@ struct MarkdownPreviewerApp: App {
          * A WindowGroup spawns one window per file-open event, and because the
          * controller is a singleton every one of them renders identical content.
          */
-        Window("Markdown Previewer", id: "main") {
+        Window("Folio", id: "main") {
             RootView(controller: controller)
         }
         .commands {

@@ -6,7 +6,7 @@
   the structure of a long document. Deliberately not a page with grey lines,
   and not the M-with-a-down-arrow Markdown logo.
 
-  Palette is lifted from Sources/MarkdownPreviewer/Views/Theme.swift, so the
+  Palette is lifted from Sources/Folio/Views/Theme.swift, so the
   icon and the running app cannot drift apart.
 
   Geometry follows Apple's macOS grid: 1024 canvas, 824 rounded rect inset by

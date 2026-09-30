@@ -3,14 +3,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "MarkdownPreviewer",
+    name: "Folio",
     platforms: [
         .macOS(.v14),
     ],
     products: [
         .executable(
-            name: "MarkdownPreviewer",
-            targets: ["MarkdownPreviewer"]
+            name: "Folio",
+            targets: ["Folio"]
         ),
     ],
     dependencies: [
@@ -21,7 +21,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "MarkdownPreviewer",
+            name: "Folio",
             dependencies: [
                 .product(name: "CMarkGFM", package: "swift-cmark-gfm"),
             ],
@@ -30,9 +30,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "MarkdownPreviewerTests",
+            name: "FolioTests",
             dependencies: [
-                "MarkdownPreviewer",
+                "Folio",
             ]
         ),
     ]
