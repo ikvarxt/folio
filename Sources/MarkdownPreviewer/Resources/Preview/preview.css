@@ -538,6 +538,76 @@ img {
   color: var(--danger);
 }
 
+.document img:not(a img),
+.mermaid:not(.mermaid-failed) svg {
+  cursor: zoom-in;
+}
+
+/* ---------- Lightbox ---------- */
+
+.lightbox-open,
+.lightbox-open body {
+  overflow: hidden;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lightbox.is-visible {
+  opacity: 1;
+}
+
+.lightbox-figure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  margin: 0;
+  border-radius: 0;
+  transform-origin: 0 0;
+  cursor: zoom-in;
+  -webkit-user-drag: none;
+}
+
+.lightbox.is-zoomed .lightbox-figure {
+  cursor: grab;
+}
+
+.lightbox.is-dragging .lightbox-figure {
+  cursor: grabbing;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: 22px/1 var(--type-serif);
+  cursor: pointer;
+}
+
+.lightbox-close:hover {
+  color: var(--ink);
+  background: var(--wash);
+}
+
 /* ---------- Responsive & motion ---------- */
 
 @media (max-width: 720px) {
@@ -555,7 +625,8 @@ img {
     scroll-behavior: auto;
   }
 
-  a {
+  a,
+  .lightbox {
     transition: none;
   }
 }

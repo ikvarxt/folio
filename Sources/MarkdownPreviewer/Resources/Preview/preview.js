@@ -381,6 +381,7 @@
    * be reset to source and drawn again.
    */
   async function redrawMermaidForScheme() {
+    lightbox.close();
     const nodes = Array.from(document.querySelectorAll(".mermaid[data-mermaid-source]"));
 
     nodes.forEach((node) => {
@@ -447,6 +448,276 @@
     reportScroll();
   }
 
+  /*
+   * Full-window viewer for images and diagrams. Zoom resizes the element
+   * instead of scaling it with a transform, so SVG stays vector-sharp and a
+   * raster image is resampled rather than stretched from a cached layer.
+   */
+  const lightbox = (() => {
+    const margin = 48;
+    let overlay = null;
+    let figure = null;
+    let natural = { width: 1, height: 1 };
+    let isRaster = false;
+    let fit = 1;
+    let scale = 1;
+    let origin = { x: 0, y: 0 };
+    let drag = null;
+    let gestureStartScale = 1;
+
+    function zoomable(target) {
+      if (!(target instanceof Element)) {
+        return null;
+      }
+
+      const svg = target.closest(".mermaid:not(.mermaid-failed) svg");
+      if (svg) {
+        return svg;
+      }
+
+      // A linked image keeps behaving as a link.
+      const image = target.closest(".document img");
+      return image && !image.closest("a") ? image : null;
+    }
+
+    function measure(source) {
+      if (source instanceof HTMLImageElement) {
+        return { width: source.naturalWidth || source.width, height: source.naturalHeight || source.height };
+      }
+
+      const box = source.viewBox && source.viewBox.baseVal;
+      if (box && box.width && box.height) {
+        return { width: box.width, height: box.height };
+      }
+
+      const rect = source.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }
+
+    function open(source) {
+      close();
+
+      natural = measure(source);
+      if (!natural.width || !natural.height) {
+        return;
+      }
+
+      isRaster = source instanceof HTMLImageElement && !/\.svg(\?|#|$)/i.test(source.currentSrc || source.src);
+
+      figure = source.cloneNode(true);
+      figure.removeAttribute("style");
+      figure.removeAttribute("width");
+      figure.removeAttribute("height");
+      figure.classList.add("lightbox-figure");
+
+      const closeButton = document.createElement("button");
+      closeButton.className = "lightbox-close";
+      closeButton.type = "button";
+      closeButton.setAttribute("aria-label", "Close");
+      closeButton.textContent = "×";
+      closeButton.addEventListener("click", close);
+
+      overlay = document.createElement("div");
+      overlay.className = "lightbox";
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.append(figure, closeButton);
+      document.body.append(overlay);
+      document.documentElement.classList.add("lightbox-open");
+
+      overlay.addEventListener("wheel", onWheel, { passive: false });
+      overlay.addEventListener("gesturestart", onGestureStart);
+      overlay.addEventListener("gesturechange", onGestureChange);
+      overlay.addEventListener("pointerdown", onPointerDown);
+      overlay.addEventListener("dblclick", onDoubleClick);
+      window.addEventListener("keydown", onKeyDown, true);
+      window.addEventListener("resize", reset);
+
+      reset();
+      requestAnimationFrame(() => overlay?.classList.add("is-visible"));
+    }
+
+    function close() {
+      if (!overlay) {
+        return;
+      }
+
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("resize", reset);
+      document.documentElement.classList.remove("lightbox-open");
+      overlay.remove();
+      overlay = null;
+      figure = null;
+      drag = null;
+    }
+
+    function reset() {
+      const width = window.innerWidth - margin * 2;
+      const height = window.innerHeight - margin * 2;
+      fit = Math.min(width / natural.width, height / natural.height);
+
+      // Upscaling a small bitmap past 2x only magnifies its blur.
+      if (isRaster) {
+        fit = Math.min(fit, 2);
+      }
+
+      scale = fit;
+      origin = {
+        x: (window.innerWidth - natural.width * scale) / 2,
+        y: (window.innerHeight - natural.height * scale) / 2,
+      };
+      apply();
+    }
+
+    function maxScale() {
+      return Math.max(fit * 8, isRaster ? 4 : 1);
+    }
+
+    // Content smaller than the window stays centred; larger content can pan
+    // edge to edge but never leaves a gap on either side.
+    function clampAxis(offset, size, viewport) {
+      if (size <= viewport) {
+        return (viewport - size) / 2;
+      }
+
+      return Math.min(0, Math.max(viewport - size, offset));
+    }
+
+    function apply() {
+      if (!figure) {
+        return;
+      }
+
+      const width = natural.width * scale;
+      const height = natural.height * scale;
+      origin.x = clampAxis(origin.x, width, window.innerWidth);
+      origin.y = clampAxis(origin.y, height, window.innerHeight);
+
+      figure.style.width = `${width}px`;
+      figure.style.height = `${height}px`;
+      figure.style.transform = `translate(${origin.x}px, ${origin.y}px)`;
+      overlay.classList.toggle("is-zoomed", scale > fit * 1.01);
+    }
+
+    function zoomTo(next, pointX = window.innerWidth / 2, pointY = window.innerHeight / 2) {
+      const clamped = Math.min(maxScale(), Math.max(fit, next));
+      const ratio = clamped / scale;
+      origin.x = pointX - (pointX - origin.x) * ratio;
+      origin.y = pointY - (pointY - origin.y) * ratio;
+      scale = clamped;
+      apply();
+    }
+
+    // Trackpad pinch arrives as a ctrl-modified wheel; a plain wheel pans.
+    function onWheel(event) {
+      event.preventDefault();
+
+      if (event.ctrlKey || event.metaKey) {
+        zoomTo(scale * Math.exp(-event.deltaY * 0.01), event.clientX, event.clientY);
+        return;
+      }
+
+      origin.x -= event.deltaX;
+      origin.y -= event.deltaY;
+      apply();
+    }
+
+    // WebKit's own pinch events, which it sends instead of ctrl-wheel.
+    function onGestureStart(event) {
+      event.preventDefault();
+      gestureStartScale = scale;
+    }
+
+    function onGestureChange(event) {
+      event.preventDefault();
+      zoomTo(gestureStartScale * event.scale, event.clientX, event.clientY);
+    }
+
+    function onPointerDown(event) {
+      if (event.button !== 0 || event.target.closest(".lightbox-close")) {
+        return;
+      }
+
+      drag = { x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, moved: false };
+      overlay.setPointerCapture(event.pointerId);
+      overlay.addEventListener("pointermove", onPointerMove);
+      overlay.addEventListener("pointerup", onPointerUp, { once: true });
+    }
+
+    function onPointerMove(event) {
+      if (!drag) {
+        return;
+      }
+
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+
+      if (!drag.moved && Math.hypot(dx, dy) < 4) {
+        return;
+      }
+
+      drag.moved = true;
+      overlay.classList.add("is-dragging");
+      origin.x = drag.originX + dx;
+      origin.y = drag.originY + dy;
+      apply();
+    }
+
+    function onPointerUp(event) {
+      overlay?.removeEventListener("pointermove", onPointerMove);
+      overlay?.classList.remove("is-dragging");
+
+      const wasClick = drag && !drag.moved;
+      drag = null;
+
+      if (wasClick && event.target === overlay) {
+        close();
+      }
+    }
+
+    function onDoubleClick(event) {
+      if (event.target !== figure && !figure?.contains(event.target)) {
+        return;
+      }
+
+      if (scale > fit * 1.01) {
+        reset();
+      } else {
+        zoomTo(isRaster ? Math.max(1, fit * 2) : fit * 2.5, event.clientX, event.clientY);
+      }
+    }
+
+    function onKeyDown(event) {
+      const handled = {
+        Escape: close,
+        "=": () => zoomTo(scale * 1.25),
+        "+": () => zoomTo(scale * 1.25),
+        "-": () => zoomTo(scale / 1.25),
+        "0": reset,
+      }[event.key];
+
+      if (handled && !event.metaKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        handled();
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      if (overlay) {
+        return;
+      }
+
+      const source = zoomable(event.target);
+      if (source) {
+        event.preventDefault();
+        open(source);
+      }
+    });
+
+    return { close };
+  })();
+
   window.markdownPreview = {
     /*
      * Swap the document body in place instead of reloading the page. A reload
@@ -461,6 +732,7 @@
         return false;
       }
 
+      lightbox.close();
       const position = captureReadingPosition();
       lastReportedHeadingID = null;
       article.innerHTML = bodyHTML;
