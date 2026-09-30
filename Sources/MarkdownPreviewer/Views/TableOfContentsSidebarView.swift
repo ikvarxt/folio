@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct TableOfContentsSidebarView: View {
@@ -9,7 +10,7 @@ struct TableOfContentsSidebarView: View {
             if let tab = controller.selectedTab {
                 ObservedTOCShell(tab: tab, onSelect: onSelect)
             } else {
-                OutlineShell(subtitle: "No file open") {
+                OutlineShell {
                     OutlinePlaceholder(text: "Open a Markdown file to see its headings here.")
                 }
             }
@@ -20,87 +21,108 @@ struct TableOfContentsSidebarView: View {
 }
 
 private struct ObservedTOCShell: View {
-    private let minimumVisibleDepthOnCollapseAll = 2
-
     @ObservedObject var tab: DocumentTab
     let onSelect: (String) -> Void
-    @State private var collapsedNodeIDs: Set<String> = []
+
+    private let foldAnimation = Animation.easeOut(duration: 0.15)
 
     private var outlineTree: [TableOfContentsNode] {
         TableOfContentsNode.tree(from: tab.tableOfContents)
     }
 
-    private var collapsibleIDs: Set<String> {
-        outlineTree.reduce(into: Set<String>()) { partial, node in
-            partial.formUnion(node.collapsibleIDs)
-        }
-    }
-
     var body: some View {
-        OutlineShell(
-            subtitle: "\(tab.tableOfContents.count) heading\(tab.tableOfContents.count == 1 ? "" : "s")",
-            actions: {
-                if !collapsibleIDs.isEmpty {
-                    Button {
-                        collapsedNodeIDs.removeAll()
-                    } label: {
-                        Image(systemName: "chevron.down")
-                    }
-                    .buttonStyle(IconButtonStyle())
-                    .help("Expand all headings")
-                    .accessibilityLabel("Expand all headings")
+        let tree = outlineTree
+        let collapsed = tab.collapsedOutlineIDs
+        let collapseAllIDs = TableOfContentsNode.collapseAllIDs(in: tree)
+        let isFullyCollapsed = !collapseAllIDs.isEmpty && collapseAllIDs.isSubset(of: collapsed)
+        let rows = TableOfContentsNode.visibleRows(in: tree, collapsedIDs: collapsed)
+        let activeRowID = tab.activeHeadingID.flatMap {
+            TableOfContentsNode.visibleRowID(for: $0, in: tree, collapsedIDs: collapsed)
+        }
 
+        OutlineShell(
+            actions: {
+                if !collapseAllIDs.isEmpty {
                     Button {
-                        collapsedNodeIDs = TableOfContentsNode.collapsedIDs(
-                            in: outlineTree,
-                            preservingVisibleDepth: minimumVisibleDepthOnCollapseAll
-                        )
+                        withAnimation(foldAnimation) {
+                            tab.collapsedOutlineIDs = isFullyCollapsed ? [] : collapseAllIDs
+                        }
                     } label: {
-                        Image(systemName: "chevron.right")
+                        Image(systemName: isFullyCollapsed ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
                     }
                     .buttonStyle(IconButtonStyle())
-                    .help("Collapse to the top two levels")
-                    .accessibilityLabel("Collapse headings")
+                    .help(isFullyCollapsed ? "Expand all headings" : "Collapse all headings")
+                    .accessibilityLabel(isFullyCollapsed ? "Expand all headings" : "Collapse all headings")
                 }
             },
             content: {
-                if tab.tableOfContents.isEmpty {
+                if rows.isEmpty {
                     OutlinePlaceholder(text: "This document has no headings.")
                 } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 1) {
-                            ForEach(outlineTree) { node in
-                                TableOfContentsNodeRow(
-                                    node: node,
-                                    depth: 0,
-                                    activeHeadingID: tab.activeHeadingID,
-                                    collapsedNodeIDs: $collapsedNodeIDs,
-                                    onSelect: onSelect
-                                )
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 1) {
+                                ForEach(rows) { row in
+                                    TableOfContentsRowView(
+                                        row: row,
+                                        isActive: row.id == activeRowID,
+                                        isCollapsed: collapsed.contains(row.id),
+                                        onToggle: { recursive in toggle(row.node, recursive: recursive) },
+                                        onSelect: { select(row.node) }
+                                    )
+                                    .id(row.id)
+                                }
+                            }
+                            .padding(.vertical, Theme.Spacing.xxs)
+                            .padding(.horizontal, Theme.Spacing.xs)
+                        }
+                        // Follow the reader: an anchor of nil scrolls only as far
+                        // as needed, so the outline stays put while the row is on screen.
+                        .onChange(of: activeRowID) { _, id in
+                            guard let id else { return }
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(id)
                             }
                         }
-                        .padding(.vertical, Theme.Spacing.xs)
-                        .padding(.horizontal, Theme.Spacing.xs)
                     }
                 }
             }
         )
-        .onAppear {
-            collapsedNodeIDs = collapsedNodeIDs.intersection(collapsibleIDs)
+        .onChange(of: tab.tableOfContents.map(\.id), initial: true) {
+            let valid = outlineTree.reduce(into: Set<String>()) { $0.formUnion($1.collapsibleIDs) }
+            if !tab.collapsedOutlineIDs.isSubset(of: valid) {
+                tab.collapsedOutlineIDs.formIntersection(valid)
+            }
         }
-        .onChange(of: tab.tableOfContents.map(\.id), initial: false) {
-            collapsedNodeIDs = collapsedNodeIDs.intersection(collapsibleIDs)
+    }
+
+    /// Option-click folds or unfolds the whole subtree, as in Finder's list view.
+    private func toggle(_ node: TableOfContentsNode, recursive: Bool) {
+        let ids = recursive ? node.collapsibleIDs : [node.id]
+
+        withAnimation(foldAnimation) {
+            if tab.collapsedOutlineIDs.contains(node.id) {
+                tab.collapsedOutlineIDs.subtract(ids)
+            } else {
+                tab.collapsedOutlineIDs.formUnion(ids)
+            }
         }
+    }
+
+    // Jumping to a folded section opens it: the reader is headed there anyway.
+    private func select(_ node: TableOfContentsNode) {
+        withAnimation(foldAnimation) {
+            _ = tab.collapsedOutlineIDs.remove(node.id)
+        }
+        onSelect(node.id)
     }
 }
 
 private struct OutlineShell<Actions: View, Content: View>: View {
-    let subtitle: String
     @ViewBuilder var actions: Actions
     @ViewBuilder var content: Content
 
-    init(subtitle: String, @ViewBuilder actions: () -> Actions = { EmptyView() }, @ViewBuilder content: () -> Content) {
-        self.subtitle = subtitle
+    init(@ViewBuilder actions: () -> Actions = { EmptyView() }, @ViewBuilder content: () -> Content) {
         self.actions = actions()
         self.content = content()
     }
@@ -108,26 +130,15 @@ private struct OutlineShell<Actions: View, Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Theme.Spacing.xs) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Outline")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.ink)
-
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundStyle(Theme.mutedInk)
-                        .monospacedDigit()
-                }
+                SidebarHeading("Outline")
 
                 Spacer(minLength: Theme.Spacing.xs)
 
                 actions
             }
-            .padding(.horizontal, Theme.Spacing.md)
-            .padding(.vertical, Theme.Spacing.sm)
-
-            Divider()
-                .overlay(Theme.line)
+            .padding(.leading, Theme.Spacing.md)
+            .padding(.trailing, Theme.Spacing.xs)
+            .frame(height: Theme.headerHeight)
 
             content
 
@@ -145,7 +156,8 @@ private struct OutlinePlaceholder: View {
             .foregroundStyle(Theme.mutedInk)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(Theme.Spacing.md)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.xs)
     }
 }
 
@@ -154,24 +166,23 @@ private struct OutlinePlaceholder: View {
  * on every row triples the furniture without adding information the indent
  * does not already give.
  */
-private struct TableOfContentsNodeRow: View {
-    let node: TableOfContentsNode
-    let depth: Int
-    let activeHeadingID: String?
-    @Binding var collapsedNodeIDs: Set<String>
-    let onSelect: (String) -> Void
+private struct TableOfContentsRowView: View {
+    let row: TableOfContentsRow
+    let isActive: Bool
+    let isCollapsed: Bool
+    let onToggle: (_ recursive: Bool) -> Void
+    let onSelect: () -> Void
 
     @State private var isHovering = false
 
-    private let disclosureWidth: CGFloat = 14
-    private let indentPerLevel: CGFloat = 11
+    private let disclosureWidth: CGFloat = 18
+    private let indentPerLevel: CGFloat = 12
+    // One line of 12pt text plus the title's vertical padding, so the chevron
+    // centres on the first line when a title wraps.
+    private let firstLineHeight: CGFloat = 25
 
-    private var isCollapsed: Bool {
-        collapsedNodeIDs.contains(node.id)
-    }
-
-    private var isActive: Bool {
-        node.id == activeHeadingID
+    private var node: TableOfContentsNode {
+        row.node
     }
 
     private var titleFont: Font {
@@ -201,88 +212,52 @@ private struct TableOfContentsNodeRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xxs) {
-                if node.hasChildren {
-                    Button(action: toggleCollapsed) {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(Theme.mutedInk)
-                            .rotationEffect(.degrees(isCollapsed ? 0 : 90))
-                            .frame(width: disclosureWidth, height: 14)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PressScaleButtonStyle())
-                    .accessibilityLabel(isCollapsed ? "Expand \(node.item.title)" : "Collapse \(node.item.title)")
-                } else {
-                    // Fixed placeholder, not a Spacer: a Spacer in an HStack
-                    // still negotiates width and leaves childless rows a few
-                    // points off the rows that do have a chevron.
-                    Color.clear
-                        .frame(width: disclosureWidth, height: 14)
-                }
+        HStack(alignment: .top, spacing: 0) {
+            disclosure
 
-                Text(node.item.title)
-                    .font(titleFont)
-                    .foregroundStyle(titleColor)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.leading, Theme.Spacing.xs + CGFloat(depth) * indentPerLevel)
-            .padding(.trailing, Theme.Spacing.xs)
-            .padding(.vertical, 5)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                    .fill(rowFill)
-            )
-            // Same thin rail the file list uses for its selection, so "where I
-            // am" reads the same way in both sidebars.
-            .overlay(alignment: .leading) {
-                if isActive {
-                    RoundedRectangle(cornerRadius: 1, style: .continuous)
-                        .fill(Theme.accent)
-                        .frame(width: 2)
-                        .padding(.vertical, 3)
-                }
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onSelect(node.id)
-            }
-            .onHover { hovering in
-                isHovering = hovering
-            }
-            .animation(.easeOut(duration: 0.12), value: isHovering)
-            .animation(.easeOut(duration: 0.15), value: isActive)
-
-            if node.hasChildren, !isCollapsed {
-                ForEach(node.children) { child in
-                    TableOfContentsNodeRow(
-                        node: child,
-                        depth: depth + 1,
-                        activeHeadingID: activeHeadingID,
-                        collapsedNodeIDs: $collapsedNodeIDs,
-                        onSelect: onSelect
-                    )
-                }
-            }
+            Text(node.item.title)
+                .font(titleFont)
+                .foregroundStyle(titleColor)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 5)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onSelect)
         }
+        .padding(.leading, CGFloat(row.depth) * indentPerLevel)
+        .padding(.trailing, Theme.Spacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(isHovering ? Theme.rowHover : .clear)
+        )
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+        .animation(.easeOut(duration: 0.15), value: isActive)
     }
 
-    private var rowFill: Color {
-        if isActive {
-            return Theme.accentSoft.opacity(0.6)
-        }
-
-        return isHovering ? Theme.rowHover : .clear
-    }
-
-    private func toggleCollapsed() {
-        if isCollapsed {
-            collapsedNodeIDs.remove(node.id)
+    // The whole gutter column is the hit target, not just the glyph.
+    @ViewBuilder
+    private var disclosure: some View {
+        if node.hasChildren {
+            Button {
+                onToggle(NSEvent.modifierFlags.contains(.option))
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(isHovering ? Theme.inkSoft : Theme.mutedInk)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 90))
+                    .frame(width: disclosureWidth, height: firstLineHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Option-click to fold or unfold every level below")
+            .accessibilityLabel(isCollapsed ? "Expand \(node.item.title)" : "Collapse \(node.item.title)")
         } else {
-            collapsedNodeIDs.insert(node.id)
+            Color.clear
+                .frame(width: disclosureWidth, height: firstLineHeight)
         }
     }
 }

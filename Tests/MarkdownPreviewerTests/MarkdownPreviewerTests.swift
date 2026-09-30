@@ -241,24 +241,67 @@ final class MarkdownPreviewerTests: XCTestCase {
         XCTAssertFalse(tree[0].collapsibleIDs.contains("c"))
     }
 
-    func testCollapseAllPreservesFirstTwoVisibleOutlineLevels() {
+    func testCollapseAllKeepsALoneRootOpen() {
+        let items = [
+            TableOfContentsItem(id: "title", title: "Title", level: 1),
+            TableOfContentsItem(id: "a", title: "A", level: 2),
+            TableOfContentsItem(id: "b", title: "B", level: 3),
+            TableOfContentsItem(id: "c", title: "C", level: 2),
+            TableOfContentsItem(id: "d", title: "D", level: 3),
+        ]
+
+        let tree = TableOfContentsNode.tree(from: items)
+        let collapsed = TableOfContentsNode.collapseAllIDs(in: tree)
+
+        XCTAssertEqual(collapsed, ["a", "c"])
+        XCTAssertEqual(
+            TableOfContentsNode.visibleRows(in: tree, collapsedIDs: collapsed).map(\.id),
+            ["title", "a", "c"]
+        )
+    }
+
+    func testCollapseAllFoldsEveryRootWhenThereAreSeveral() {
+        let items = [
+            TableOfContentsItem(id: "a", title: "A", level: 1),
+            TableOfContentsItem(id: "b", title: "B", level: 2),
+            TableOfContentsItem(id: "c", title: "C", level: 1),
+            TableOfContentsItem(id: "d", title: "D", level: 2),
+        ]
+
+        let tree = TableOfContentsNode.tree(from: items)
+
+        XCTAssertEqual(TableOfContentsNode.collapseAllIDs(in: tree), ["a", "c"])
+    }
+
+    func testActiveHeadingHiddenByAFoldMarksTheFoldedAncestor() {
+        let items = [
+            TableOfContentsItem(id: "a", title: "A", level: 1),
+            TableOfContentsItem(id: "b", title: "B", level: 2),
+            TableOfContentsItem(id: "c", title: "C", level: 3),
+        ]
+
+        let tree = TableOfContentsNode.tree(from: items)
+
+        XCTAssertEqual(TableOfContentsNode.visibleRowID(for: "c", in: tree, collapsedIDs: []), "c")
+        XCTAssertEqual(TableOfContentsNode.visibleRowID(for: "c", in: tree, collapsedIDs: ["b"]), "b")
+        XCTAssertEqual(TableOfContentsNode.visibleRowID(for: "c", in: tree, collapsedIDs: ["a", "b"]), "a")
+        XCTAssertEqual(TableOfContentsNode.visibleRowID(for: "b", in: tree, collapsedIDs: ["b"]), "b")
+        XCTAssertNil(TableOfContentsNode.visibleRowID(for: "missing", in: tree, collapsedIDs: []))
+    }
+
+    func testVisibleRowsCarryDepthAndSkipFoldedChildren() {
         let items = [
             TableOfContentsItem(id: "a", title: "A", level: 1),
             TableOfContentsItem(id: "b", title: "B", level: 2),
             TableOfContentsItem(id: "c", title: "C", level: 3),
             TableOfContentsItem(id: "d", title: "D", level: 2),
-            TableOfContentsItem(id: "e", title: "E", level: 3),
-            TableOfContentsItem(id: "f", title: "F", level: 1),
-            TableOfContentsItem(id: "g", title: "G", level: 2),
-            TableOfContentsItem(id: "h", title: "H", level: 3),
         ]
 
         let tree = TableOfContentsNode.tree(from: items)
-        let collapsedIDs = TableOfContentsNode.collapsedIDs(in: tree, preservingVisibleDepth: 2)
+        let rows = TableOfContentsNode.visibleRows(in: tree, collapsedIDs: ["b"])
 
-        XCTAssertEqual(collapsedIDs, ["b", "d", "g"])
-        XCTAssertFalse(collapsedIDs.contains("a"))
-        XCTAssertFalse(collapsedIDs.contains("f"))
+        XCTAssertEqual(rows.map(\.id), ["a", "b", "d"])
+        XCTAssertEqual(rows.map(\.depth), [0, 1, 1])
     }
 
     @MainActor

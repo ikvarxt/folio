@@ -36,6 +36,7 @@ final class DocumentTab: ObservableObject, Identifiable {
     @Published private(set) var fileSyncStatus: FileSyncStatus = .upToDate
     @Published var savedScrollPosition: Double = 0
     @Published var scrollRequest: ScrollRequest?
+    @Published var collapsedOutlineIDs: Set<String> = []
 
     private var lastRenderedFileVersion: FileVersionSnapshot?
 

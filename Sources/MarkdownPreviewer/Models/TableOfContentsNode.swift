@@ -24,29 +24,74 @@ struct TableOfContentsNode: Identifiable, Equatable {
         return ids
     }
 
-    static func collapsedIDs(
+    /*
+     * Everything collapsed except a chain of lone roots: a document with one H1
+     * over the rest would otherwise collapse to a single row, which hides the
+     * outline instead of summarising it.
+     */
+    static func collapseAllIDs(in nodes: [TableOfContentsNode]) -> Set<String> {
+        var ids = nodes.reduce(into: Set<String>()) { $0.formUnion($1.collapsibleIDs) }
+        var level = nodes
+
+        while level.count == 1, let only = level.first, only.hasChildren {
+            ids.remove(only.id)
+            level = only.children
+        }
+
+        return ids
+    }
+
+    static func visibleRows(
         in nodes: [TableOfContentsNode],
-        preservingVisibleDepth visibleDepth: Int
-    ) -> Set<String> {
-        let deepestExpandedDepth = max(visibleDepth - 1, 0)
+        collapsedIDs: Set<String>
+    ) -> [TableOfContentsRow] {
+        var rows: [TableOfContentsRow] = []
 
-        func collect(from node: TableOfContentsNode, depth: Int) -> Set<String> {
-            guard node.hasChildren else {
-                return []
+        func visit(_ node: TableOfContentsNode, depth: Int) {
+            rows.append(TableOfContentsRow(node: node, depth: depth))
+
+            guard !collapsedIDs.contains(node.id) else {
+                return
             }
 
-            if depth >= deepestExpandedDepth {
-                return [node.id]
-            }
-
-            return node.children.reduce(into: Set<String>()) { partial, child in
-                partial.formUnion(collect(from: child, depth: depth + 1))
+            for child in node.children {
+                visit(child, depth: depth + 1)
             }
         }
 
-        return nodes.reduce(into: Set<String>()) { partial, node in
-            partial.formUnion(collect(from: node, depth: 0))
+        for node in nodes {
+            visit(node, depth: 0)
         }
+
+        return rows
+    }
+
+    /// The row that stands in for `id`: itself when visible, otherwise the
+    /// ancestor whose collapse is hiding it.
+    static func visibleRowID(
+        for id: String,
+        in nodes: [TableOfContentsNode],
+        collapsedIDs: Set<String>
+    ) -> String? {
+        func path(in nodes: [TableOfContentsNode]) -> [TableOfContentsNode]? {
+            for node in nodes {
+                if node.id == id {
+                    return [node]
+                }
+
+                if let rest = path(in: node.children) {
+                    return [node] + rest
+                }
+            }
+
+            return nil
+        }
+
+        guard let path = path(in: nodes) else {
+            return nil
+        }
+
+        return path.first(where: { collapsedIDs.contains($0.id) })?.id ?? id
     }
 
     static func tree(from items: [TableOfContentsItem]) -> [TableOfContentsNode] {
@@ -87,4 +132,11 @@ struct TableOfContentsNode: Identifiable, Equatable {
 
         return roots.map(freeze)
     }
+}
+
+struct TableOfContentsRow: Identifiable, Equatable {
+    let node: TableOfContentsNode
+    let depth: Int
+
+    var id: String { node.id }
 }
