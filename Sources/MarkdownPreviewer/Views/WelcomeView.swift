@@ -2,7 +2,7 @@ import SwiftUI
 
 /*
  * Utility empty state, not a landing page: name the app, offer the one action
- * that gets you out of here, and list the two shortcuts worth knowing.
+ * that gets you out of here, and list the shortcuts worth knowing.
  */
 struct WelcomeView: View {
     let openAction: () -> Void
@@ -10,7 +10,7 @@ struct WelcomeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             Text("Markdown Previewer")
-                .font(.system(size: 26, weight: .semibold))
+                .font(.system(size: 28, weight: .semibold, design: .serif))
                 .foregroundStyle(Theme.ink)
 
             Text("Open a file, drop one here, or paste text to start reading.")

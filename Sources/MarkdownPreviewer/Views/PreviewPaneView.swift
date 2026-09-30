@@ -29,9 +29,6 @@ private struct ObservedPreviewSurface: View {
         VStack(spacing: 0) {
             toolbar
 
-            Divider()
-                .overlay(Theme.line)
-
             ZStack(alignment: .top) {
                 PreviewWebView(controller: controller, tab: tab)
                     .background(Theme.panelSurface)
@@ -45,28 +42,21 @@ private struct ObservedPreviewSurface: View {
 
     private var toolbar: some View {
         HStack(spacing: Theme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                HStack(spacing: Theme.Spacing.xs) {
-                    Text(tab.title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+                Text(tab.title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .layoutPriority(1)
 
-                    if tab.needsReloadPrompt {
-                        FileSyncIndicatorLight(status: tab.fileSyncStatus)
-                    }
-                }
-
-                HStack(spacing: Theme.Spacing.sm) {
+                if tab.needsReloadPrompt {
+                    FileSyncStatusLine(status: tab.fileSyncStatus)
+                } else {
                     Text(tab.fileDetailsText)
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.mutedInk)
                         .lineLimit(1)
-
-                    if tab.needsReloadPrompt {
-                        FileSyncStatusLine(status: tab.fileSyncStatus)
-                    }
                 }
             }
 
@@ -75,7 +65,7 @@ private struct ObservedPreviewSurface: View {
             Button(action: controller.toggleAutoReload) {
                 Image(systemName: controller.isAutoReloadEnabled ? "bolt.fill" : "bolt.slash")
             }
-            .buttonStyle(IconButtonStyle(isProminent: controller.isAutoReloadEnabled))
+            .buttonStyle(IconButtonStyle())
             .help(controller.isAutoReloadEnabled
                 ? "Auto-reload is on: saving the file updates this preview"
                 : "Auto-reload is off: press ⌘R after saving")
@@ -95,12 +85,13 @@ private struct ObservedPreviewSurface: View {
                     ? "arrow.down.right.and.arrow.up.left"
                     : "arrow.up.left.and.arrow.down.right")
             }
-            .buttonStyle(IconButtonStyle(isProminent: controller.isZenModeEnabled))
+            .buttonStyle(IconButtonStyle())
             .help(controller.isZenModeEnabled ? "Exit zen mode (⌘Z)" : "Hide both sidebars (⌘Z)")
             .accessibilityLabel(controller.isZenModeEnabled ? "Exit zen mode" : "Enter zen mode")
         }
-        .padding(.horizontal, Theme.Spacing.lg)
-        .padding(.vertical, Theme.Spacing.sm)
+        .padding(.leading, Theme.Spacing.lg)
+        .padding(.trailing, Theme.Spacing.xs)
+        .frame(height: Theme.headerHeight)
         .background(Theme.panelSurface)
     }
 
@@ -126,9 +117,10 @@ private struct ObservedPreviewSurface: View {
             .frame(minWidth: Theme.controlHitSize)
         }
         .buttonStyle(
-            ReloadButtonStyle(
+            IconButtonStyle(
                 isProminent: outdatedCount > 0,
-                tint: tab.fileSyncStatus.indicatorColor
+                tint: tab.fileSyncStatus.indicatorColor,
+                isSquare: false
             )
         )
         .help(reloadHelpText)
@@ -144,31 +136,6 @@ private struct ObservedPreviewSurface: View {
         default:
             return "\(outdatedCount) open files changed on disk. Reload them all (⌘R)"
         }
-    }
-}
-
-private struct ReloadButtonStyle: ButtonStyle {
-    var isProminent: Bool
-    var tint: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(isProminent ? tint : Theme.inkSoft)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                    .fill(fill(for: configuration))
-            )
-            .contentShape(Rectangle())
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-
-    private func fill(for configuration: Configuration) -> Color {
-        if isProminent {
-            return tint.opacity(configuration.isPressed ? 0.26 : 0.16)
-        }
-
-        return configuration.isPressed ? Theme.line.opacity(0.4) : .clear
     }
 }
 

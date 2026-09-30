@@ -9,28 +9,26 @@ enum Theme {
      * a branch in every view for a value that never differs between them.
      */
 
-    // Surfaces, warm cream rather than neutral grey. Lightness steps between
-    // adjacent surfaces stay above 4% so nested panes stay distinguishable, and
-    // the dark side keeps both the warm hue and that step size.
-    static let windowCanvas = dynamic(light: 0xF4F2EC, dark: 0x1E1B18)
-    static let sidebarSurface = dynamic(light: 0xEDEAE4, dark: 0x151311)
-    static let panelSurface = dynamic(light: 0xFBFBF8, dark: 0x262220)
-    static let rowHover = dynamic(light: 0xF6F4F0, dark: 0x221E1A)
+    // The preview pane shares preview.css's paper so the page and its chrome
+    // read as one surface; the sidebars sit one step darker to recede.
+    static let panelSurface = dynamic(light: 0xFCFBF8, dark: 0x1C1B19)
+    static let sidebarSurface = dynamic(light: 0xF4F2ED, dark: 0x171614)
+    static let rowHover = dynamic(light: 0xECE9E3, dark: 0x201E1B)
+    static let rowSelected = dynamic(light: 0xE5E1D9, dark: 0x2A2825)
 
-    static let line = dynamic(light: 0xD7D0C6, dark: 0x453E36)
-    static let ink = dynamic(light: 0x302D28, dark: 0xEDE7DE)
-    static let inkSoft = dynamic(light: 0x524D45, dark: 0xC9C1B6)
-    static let mutedInk = dynamic(light: 0x797266, dark: 0x9C9285)
+    static let line = dynamic(light: 0xE6E2DA, dark: 0x33302B)
+    static let ink = dynamic(light: 0x26231F, dark: 0xE6E1D8)
+    static let inkSoft = dynamic(light: 0x57524A, dark: 0xBDB6AB)
+    static let mutedInk = dynamic(light: 0x8A8378, dark: 0x8C857A)
 
     /*
-     * The accent lightens after dark instead of keeping its daylight value: at
-     * 0.19 relative luminance it would fail contrast against every dark surface
-     * here. Lightening it flips which label colour it can carry, which is what
-     * `onAccent` exists to track.
+     * The accent lightens after dark instead of keeping its daylight value,
+     * which would fail contrast against every dark surface here. Lightening it
+     * flips which label colour it can carry, which is what `onAccent` tracks.
      */
-    static let accent = dynamic(light: 0xA96838, dark: 0xE09A5F)
-    static let accentSoft = dynamic(light: 0xF1E4D6, dark: 0x3A2A1D)
-    static let onAccent = dynamic(light: 0xFFFFFF, dark: 0x24201C)
+    static let accent = dynamic(light: 0xA2622F, dark: 0xDC9A64)
+    static let accentSoft = dynamic(light: 0xF1E6D9, dark: 0x3A2C20)
+    static let onAccent = dynamic(light: 0xFFFFFF, dark: 0x1C1B19)
     static let signalChanged = dynamic(light: 0xB97836, dark: 0xE0A44E)
     static let signalMissing = dynamic(light: 0xB3493E, dark: 0xE8746A)
 
@@ -53,6 +51,9 @@ enum Theme {
 
     /// Minimum comfortable hit area for a control.
     static let controlHitSize: CGFloat = 28
+
+    /// Shared by the toolbar and both sidebar headers so their baselines line up.
+    static let headerHeight: CGFloat = 44
 
     private static func dynamic(light: UInt32, dark: UInt32) -> Color {
         let lightColor = NSColor(hex: light)
@@ -87,12 +88,17 @@ struct PressScaleButtonStyle: ButtonStyle {
 struct IconButtonStyle: ButtonStyle {
     var isProminent = false
     var tint = Theme.accent
+    // Off for a label that sizes itself, such as an icon with a count beside it.
+    var isSquare = true
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(isProminent ? tint : Theme.inkSoft)
-            .frame(width: Theme.controlHitSize, height: Theme.controlHitSize)
+            .frame(
+                width: isSquare ? Theme.controlHitSize : nil,
+                height: isSquare ? Theme.controlHitSize : nil
+            )
             .background(
                 RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                     .fill(background(for: configuration))
@@ -108,5 +114,20 @@ struct IconButtonStyle: ButtonStyle {
         }
 
         return configuration.isPressed ? Theme.line.opacity(0.4) : .clear
+    }
+}
+
+/// Quiet section label at the top of a sidebar.
+struct SidebarHeading: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Theme.mutedInk)
     }
 }

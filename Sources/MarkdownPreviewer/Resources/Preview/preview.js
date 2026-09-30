@@ -9,48 +9,46 @@
   ]);
 
   const mermaidTypography = {
-    fontFamily: '"Iowan Old Style", "Palatino Linotype", "Songti SC", serif',
+    fontFamily: 'ui-serif, "Iowan Old Style", "Songti SC", serif',
     fontSize: "14px",
   };
 
   /*
-   * Warm-paper palettes mirroring preview.css, so diagrams sit on the same
-   * surface as the prose instead of arriving in Mermaid's grey default theme.
-   * Mermaid derives shades from these with a colour library that does not parse
-   * oklch(), so they stay hex here rather than reading the CSS custom properties.
+   * The preview.css tokens restated as literals: Mermaid derives its shades
+   * with a colour library at initialize time, before any CSS variable resolves.
    */
   const mermaidPalettes = {
     light: {
       ...mermaidTypography,
-      background: "#fdfcf8",
-      primaryColor: "#f6f1e6",
-      primaryTextColor: "#362f27",
-      primaryBorderColor: "#c9bda8",
-      secondaryColor: "#f1ece0",
-      tertiaryColor: "#faf7f0",
-      mainBkg: "#f6f1e6",
-      nodeBorder: "#c9bda8",
-      clusterBkg: "#faf7f0",
-      clusterBorder: "#d8cfbe",
-      lineColor: "#9d8b71",
-      textColor: "#362f27",
-      edgeLabelBackground: "#fdfcf8",
+      background: "#fcfbf8",
+      primaryColor: "#f4f2ed",
+      primaryTextColor: "#26231f",
+      primaryBorderColor: "#cfc8bc",
+      secondaryColor: "#f4f2ed",
+      tertiaryColor: "#fcfbf8",
+      mainBkg: "#f4f2ed",
+      nodeBorder: "#cfc8bc",
+      clusterBkg: "#fcfbf8",
+      clusterBorder: "#e6e2da",
+      lineColor: "#8a8378",
+      textColor: "#26231f",
+      edgeLabelBackground: "#fcfbf8",
     },
     dark: {
       ...mermaidTypography,
-      background: "#29251f",
-      primaryColor: "#342e26",
-      primaryTextColor: "#ece5da",
-      primaryBorderColor: "#5b5042",
-      secondaryColor: "#3b3429",
-      tertiaryColor: "#2f2a23",
-      mainBkg: "#342e26",
-      nodeBorder: "#5b5042",
-      clusterBkg: "#2f2a23",
-      clusterBorder: "#4a4136",
-      lineColor: "#9b8b74",
-      textColor: "#ece5da",
-      edgeLabelBackground: "#29251f",
+      background: "#1c1b19",
+      primaryColor: "#252320",
+      primaryTextColor: "#e6e1d8",
+      primaryBorderColor: "#4a463f",
+      secondaryColor: "#252320",
+      tertiaryColor: "#1c1b19",
+      mainBkg: "#252320",
+      nodeBorder: "#4a463f",
+      clusterBkg: "#1c1b19",
+      clusterBorder: "#33302b",
+      lineColor: "#8c857a",
+      textColor: "#e6e1d8",
+      edgeLabelBackground: "#1c1b19",
     },
   };
 

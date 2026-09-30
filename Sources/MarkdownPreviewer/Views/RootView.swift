@@ -58,7 +58,7 @@ struct RootView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .animation(.easeInOut(duration: 0.18), value: controller.isZenModeEnabled)
-        .background(Theme.windowCanvas)
+        .background(Theme.sidebarSurface)
         .onDrop(of: [.fileURL, .plainText], isTargeted: $controller.isDropTargeted) { providers in
             controller.openDroppedItems(providers)
         }

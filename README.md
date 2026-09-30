@@ -1,17 +1,18 @@
 # Markdown Previewer
 
-Native macOS Markdown previewer built with SwiftUI and WebKit. It is designed for large local files and keeps the interface intentionally quiet: open files as tabs in the left sidebar, preview in the center, and jump through headings from the right-side outline.
+Native macOS Markdown previewer built with SwiftUI and WebKit. Open files are tabs in the left sidebar, the preview sits in the center, and the right sidebar is an outline of the document's headings.
 
 ## What it supports
 
-- Basic Markdown rendering through `Down` and `cmark`
+- GitHub Flavored Markdown through `swift-cmark-gfm`: tables, task lists, strikethrough, footnotes
+- Syntax highlighting for fenced code blocks, via highlight.js
 - Mermaid diagrams from fenced code blocks tagged `mermaid`
-- Tab deduplication: opening an already-open file focuses the existing tab
-- Three-pane layout with resizable sidebar and TOC pane
-- Light and dark presentation that follows the macOS system appearance, diagrams included
-- Finder reveal, reload, and file-open commands
-- Relative local file navigation for Markdown links
+- Light and dark appearance that follows the system setting, diagrams included
 - Local images referenced by relative path, inline or as blocks
+- Relative links to other Markdown files open them as tabs
+- Opening a file that is already open focuses its tab
+- Resizable sidebars; zen mode (`⌘Z`) hides both
+- Change detection: files edited on disk are flagged, `⌘R` reloads the changed ones and `⇧⌘R` reloads all; auto reload can be switched on from the toolbar
 - Drag files into the window to open them; drop or paste (`⌘V`) text to preview it as a temporary document
 
 ## Build

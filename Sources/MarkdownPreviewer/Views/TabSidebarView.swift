@@ -3,16 +3,9 @@ import SwiftUI
 struct TabSidebarView: View {
     @ObservedObject var controller: AppController
 
-    private var outdatedCount: Int {
-        controller.outdatedTabs.count
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             header
-
-            Divider()
-                .overlay(Theme.line)
 
             if controller.tabs.isEmpty {
                 emptyState
@@ -39,27 +32,9 @@ struct TabSidebarView: View {
 
     private var header: some View {
         HStack(spacing: Theme.Spacing.xs) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Open files")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Theme.ink)
-
-                Text(subtitleText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(outdatedCount > 0 ? Theme.signalChanged : Theme.mutedInk)
-                    .monospacedDigit()
-            }
+            SidebarHeading("Open files")
 
             Spacer(minLength: Theme.Spacing.xs)
-
-            if outdatedCount > 0 {
-                Button(action: { controller.reloadOutdatedTabs() }) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(IconButtonStyle(isProminent: true, tint: Theme.signalChanged))
-                .help("Reload the \(outdatedCount == 1 ? "file" : "\(outdatedCount) files") that changed on disk (⌘R)")
-                .accessibilityLabel("Reload changed files")
-            }
 
             Button(action: controller.openPanel) {
                 Image(systemName: "plus")
@@ -68,36 +43,18 @@ struct TabSidebarView: View {
             .help("Open Markdown files (⌘O)")
             .accessibilityLabel("Open Markdown files")
         }
-        .padding(.horizontal, Theme.Spacing.md)
-        .padding(.vertical, Theme.Spacing.sm)
-    }
-
-    private var subtitleText: String {
-        let tabCount = controller.tabs.count
-        let base = "\(tabCount) file\(tabCount == 1 ? "" : "s")"
-
-        guard outdatedCount > 0 else {
-            return base
-        }
-
-        return "\(base) · \(outdatedCount) changed"
+        .padding(.leading, Theme.Spacing.md)
+        .padding(.trailing, Theme.Spacing.xs)
+        .frame(height: Theme.headerHeight)
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text("Nothing open")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-
-            Text("Press ⌘O, drop a Markdown file here or on the app icon, or press ⌘V to preview the clipboard. Reopening a file focuses its tab instead of duplicating it.")
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.mutedInk)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(Theme.Spacing.md)
+        Text("No files open")
+            .font(.system(size: 11))
+            .foregroundStyle(Theme.mutedInk)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.xs)
     }
 }
 
@@ -115,20 +72,11 @@ private struct TabRowView: View {
             RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 .fill(rowFill)
 
-            // Thin rail rather than a filled block: keeps a dense file list
-            // readable while still marking the active document.
-            if isSelected {
-                RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(Theme.accent)
-                    .frame(width: 2)
-                    .padding(.vertical, Theme.Spacing.xs)
-            }
-
             HStack(spacing: Theme.Spacing.xs) {
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: Theme.Spacing.xs) {
                         Text(tab.title)
-                            .font(.system(size: 12, weight: isSelected ? .semibold : .regular))
+                            .font(.system(size: 12, weight: isSelected ? .medium : .regular))
                             .foregroundStyle(Theme.ink)
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -173,7 +121,7 @@ private struct TabRowView: View {
 
     private var rowFill: Color {
         if isSelected {
-            return Theme.accentSoft
+            return Theme.rowSelected
         }
 
         return isHovering ? Theme.rowHover : .clear

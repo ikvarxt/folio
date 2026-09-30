@@ -1,143 +1,90 @@
 :root {
   color-scheme: light dark;
 
-  /* Surfaces: warm paper, never pure white. */
-  --canvas: oklch(0.968 0.006 90);
-  --paper: oklch(0.993 0.004 90);
-  --quote-tint: oklch(0.973 0.017 76);
-  --code-bg: oklch(0.966 0.009 85);
-  --row-tint: oklch(0.978 0.007 84);
-
-  /* Ink. */
-  --ink: oklch(0.27 0.02 55);
-  --ink-soft: oklch(0.4 0.018 58);
-  --muted: oklch(0.53 0.016 62);
-
-  /* Hairlines. */
-  --rule: oklch(0.897 0.011 80);
-  --rule-strong: oklch(0.8 0.019 74);
-
-  /* Signal. */
-  --accent: oklch(0.55 0.13 45);
-  --accent-quiet: oklch(0.93 0.028 70);
-  --on-accent: oklch(0.99 0.005 90);
-  --danger: oklch(0.45 0.14 30);
-
-  /* Depth and edges. Every colour below is per-scheme, none are literals. */
-  --shadow-near: rgba(36, 30, 22, 0.11);
-  --shadow-far: rgba(36, 30, 22, 0.04);
-  --sheet-ring: transparent;
-  --edge-shade: rgba(58, 44, 26, 0.16);
-  --media-ring: rgba(0, 0, 0, 0.1);
-
-  /* Radius scale: 4 tiers, committed. */
-  --r-sm: 5px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 20px;
+  /* Hex, not oklch: Theme.swift carries the same values so the pane and page meet without a seam. */
+  --paper: #fcfbf8;
+  --wash: #f4f2ed;
+  --ink: #26231f;
+  --ink-soft: #57524a;
+  --muted: #8a8378;
+  --rule: #e6e2da;
+  --rule-strong: #cfc8bc;
+  --accent: #a2622f;
+  --accent-quiet: #f1e6d9;
+  --on-accent: #ffffff;
+  --danger: #a8443a;
+  --edge-shade: rgba(38, 35, 31, 0.1);
 
   /*
    * Breathing room above a heading jumped to from the outline. preview.js reads
    * this same value to decide which heading counts as active, so the highlight
    * cannot land on the previous entry.
    */
-  --anchor-offset: 28px;
+  --anchor-offset: 32px;
 
-  --pad-inline: clamp(22px, 2.6vw, 40px);
-  --pad-block: clamp(30px, 3.2vw, 48px);
-
-  --type-serif: "Iowan Old Style", "Palatino Linotype", "Baskerville", "Times New Roman", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
-  --type-mono: "SF Mono", "JetBrains Mono", "Menlo", "Roboto Mono", monospace;
+  --type-serif: ui-serif, "New York", "Iowan Old Style", "Palatino", "Songti SC", "Noto Serif CJK SC", serif;
+  --type-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 }
 
-/*
- * Night palette: the same warm hue rotated down in lightness, not a neutral
- * grey, so the sheet still reads as paper. Only the colour tokens are restated;
- * every rule below stays scheme-agnostic.
- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas: oklch(0.205 0.008 75);
-    --paper: oklch(0.245 0.009 75);
-    --quote-tint: oklch(0.285 0.019 70);
-    --code-bg: oklch(0.222 0.01 75);
-    --row-tint: oklch(0.268 0.008 75);
-
-    --ink: oklch(0.925 0.012 85);
-    --ink-soft: oklch(0.83 0.014 85);
-    --muted: oklch(0.685 0.015 80);
-
-    --rule: oklch(0.33 0.012 75);
-    --rule-strong: oklch(0.45 0.016 75);
-
-    --accent: oklch(0.78 0.115 62);
-    --accent-quiet: oklch(0.36 0.05 62);
-    --on-accent: oklch(0.22 0.015 70);
-    --danger: oklch(0.72 0.14 30);
-
-    /*
-     * A drop shadow does almost nothing against a dark canvas, so the sheet
-     * gets a hairline ring to hold its edge and the shadow only adds weight.
-     */
-    --shadow-near: rgba(0, 0, 0, 0.5);
-    --shadow-far: rgba(0, 0, 0, 0.34);
-    --sheet-ring: oklch(0.32 0.011 75);
-    --edge-shade: rgba(0, 0, 0, 0.45);
-    --media-ring: rgba(255, 255, 255, 0.12);
+    --paper: #1c1b19;
+    --wash: #252320;
+    --ink: #e6e1d8;
+    --ink-soft: #bdb6ab;
+    --muted: #8c857a;
+    --rule: #33302b;
+    --rule-strong: #4a463f;
+    --accent: #dc9a64;
+    --accent-quiet: #3a2c20;
+    --on-accent: #1c1b19;
+    --danger: #e27b70;
+    --edge-shade: rgba(0, 0, 0, 0.4);
   }
 }
 
 html {
+  font-size: 18px;
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  background: var(--canvas);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--type-serif);
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  hanging-punctuation: first;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
+::selection {
+  background: var(--accent-quiet);
+}
+
 .canvas {
-  padding: 18px 18px 40px;
+  padding: 56px clamp(32px, 6vw, 88px) 120px;
 }
 
-/* The sheet fills the preview pane; content runs the full width of it. */
 .document {
-  width: auto;
-  max-width: none;
-  padding: var(--pad-block) var(--pad-inline) calc(var(--pad-block) + 10px);
-  background: var(--paper);
-  border-radius: var(--r-xl);
-  box-shadow:
-    0 0 0 1px var(--sheet-ring),
-    0 1px 3px var(--shadow-near),
-    0 18px 34px var(--shadow-far);
+  margin: 0;
 }
 
-.document > pre,
-.document > .diagram-surface,
-.document > .mermaid {
-  box-sizing: border-box;
-  width: 100%;
+.document > :first-child {
+  margin-top: 0;
 }
 
 .error-state {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .eyebrow {
   margin: 0;
-  color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+  color: var(--danger);
+  font-size: 0.85rem;
 }
 
 /* ---------- Headings ---------- */
@@ -149,71 +96,61 @@ h4,
 h5,
 h6 {
   color: var(--ink);
-  font-family: var(--type-serif);
+  font-weight: 600;
   text-wrap: balance;
   scroll-margin-top: var(--anchor-offset);
 }
 
 h1 {
-  font-size: clamp(2.05rem, 3vw, 2.6rem);
-  line-height: 1.1;
-  letter-spacing: -0.022em;
-  margin: 0 0 0.9rem;
+  font-size: 2.2rem;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 1.6rem;
 }
 
 h2 {
-  font-size: clamp(1.5rem, 2vw, 1.8rem);
-  line-height: 1.18;
-  letter-spacing: -0.018em;
-  margin: 2.6rem 0 0.7rem;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 3rem 0 0.8rem;
 }
 
 h3 {
-  font-size: 1.24rem;
-  line-height: 1.3;
-  letter-spacing: -0.012em;
-  margin: 2rem 0 0.55rem;
+  font-size: 1.2rem;
+  line-height: 1.35;
+  margin: 2.2rem 0 0.6rem;
 }
 
-/*
- * H4-H6 as tracked uppercase labels rather than bold body text: at body size
- * a bold serif is indistinguishable from a <strong> run mid-paragraph.
- * Reuses the .eyebrow device already in this stylesheet.
- */
-h4,
+h4 {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 1.8rem 0 0.4rem;
+}
+
+/* Below h4 there is no size left to step down, so italic carries the level. */
 h5,
 h6 {
-  font-size: 0.8rem;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: 0.085em;
-  text-transform: uppercase;
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.5;
   color: var(--ink-soft);
-  margin: 1.9rem 0 0.5rem;
-}
-
-h5,
-h6 {
-  color: var(--muted);
+  margin: 1.6rem 0 0.4rem;
 }
 
 h1 + h2,
 h2 + h3,
 h3 + h4 {
-  margin-top: 1.1rem;
+  margin-top: 1.2rem;
 }
 
 /* ---------- Body ---------- */
 
 p,
 li,
-blockquote,
-td,
-th,
 dd,
 dt {
-  font-size: 1rem;
-  line-height: 1.75;
+  line-height: 1.7;
   text-wrap: pretty;
 }
 
@@ -224,41 +161,37 @@ dl,
 blockquote,
 pre,
 .table-scroll,
-.diagram-surface,
 .mermaid {
   margin-top: 0;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.3rem;
 }
 
 a {
-  color: var(--accent);
+  color: inherit;
   text-decoration: underline;
-  text-decoration-color: color-mix(in oklch, var(--accent) 32%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
   text-decoration-thickness: 1px;
-  text-underline-offset: 0.16em;
-  transition-property: text-decoration-color;
-  transition-duration: 120ms;
+  text-underline-offset: 0.2em;
+  transition: color 120ms, text-decoration-color 120ms;
 }
 
 a:hover {
+  color: var(--accent);
   text-decoration-color: var(--accent);
 }
 
 strong {
-  color: var(--ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 del {
   color: var(--muted);
-  text-decoration-thickness: 1px;
 }
 
 mark {
   background: var(--accent-quiet);
-  border-radius: var(--r-sm);
-  padding: 0.05em 0.22em;
-  color: var(--ink);
+  color: inherit;
+  padding: 0 0.1em;
 }
 
 /* ---------- Code ---------- */
@@ -267,180 +200,194 @@ code,
 pre,
 kbd {
   font-family: var(--type-mono);
+  font-variant-numeric: normal;
 }
 
-/*
- * em-based so inline code scales with its context (headings, table cells)
- * instead of jumping to a fixed rem size.
- */
+/* em-based so inline code scales with its context (headings, table cells). */
 code {
-  font-size: 0.88em;
-  background: var(--code-bg);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-sm);
-  padding: 0.08em 0.3em;
+  font-size: 0.82em;
+  background: var(--wash);
+  border-radius: 4px;
+  padding: 0.12em 0.32em;
   word-break: break-word;
 }
 
 /*
- * Scrollbars stay hidden by design, so overflow is signalled with edge
- * shadows instead: the `local` layers mask them at each end of the scroll
- * range, the `scroll` layers only show while there is more content that way.
+ * Scrollbars stay hidden, so overflow is signalled with edge shadows instead:
+ * the `local` layers mask them at each end of the scroll range, the `scroll`
+ * layers only show while there is more content that way.
  */
 pre {
-  position: relative;
   overflow-x: auto;
   scrollbar-width: none;
-  -ms-overflow-style: none;
   background:
-    linear-gradient(to right, var(--code-bg) 70%, transparent) left center / 34px 100% no-repeat local,
-    linear-gradient(to left, var(--code-bg) 70%, transparent) right center / 34px 100% no-repeat local,
-    linear-gradient(to right, var(--edge-shade), transparent) left center / 22px 100% no-repeat scroll,
-    linear-gradient(to left, var(--edge-shade), transparent) right center / 22px 100% no-repeat scroll,
-    var(--code-bg);
-  border: 1px solid var(--rule);
-  border-radius: var(--r-md);
-  padding: 16px 18px;
+    linear-gradient(to right, var(--wash) 70%, transparent) left center / 34px 100% no-repeat local,
+    linear-gradient(to left, var(--wash) 70%, transparent) right center / 34px 100% no-repeat local,
+    linear-gradient(to right, var(--edge-shade), transparent) left center / 18px 100% no-repeat scroll,
+    linear-gradient(to left, var(--edge-shade), transparent) right center / 18px 100% no-repeat scroll,
+    var(--wash);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
   tab-size: 2;
 }
 
 pre::-webkit-scrollbar {
   display: none;
-  width: 0;
-  height: 0;
 }
 
-pre code {
-  display: block;
-  min-width: max-content;
-  font-size: 0.86rem;
-  line-height: 1.65;
-  background: transparent;
-  border: none;
-  padding: 0;
-  border-radius: 0;
-}
-
+pre code,
 pre code.hljs,
 code.hljs {
+  display: block;
+  min-width: max-content;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--ink);
   background: transparent;
-  border: none;
   padding: 0;
+  border-radius: 0;
   overflow: visible;
 }
 
-/* Language tag, injected as data-lang by preview.js. */
-pre[data-lang] {
-  padding-top: 30px;
+/*
+ * One accent over ink instead of the vendored rainbow: the prose is the
+ * subject, so code should read as a quieter register of the same page. Same
+ * specificity as the vendored themes; this file loads last, so it wins.
+ */
+.hljs-comment,
+.hljs-quote {
+  color: var(--muted);
+  font-style: italic;
 }
 
-pre[data-lang]::before {
-  content: attr(data-lang);
-  position: absolute;
-  top: 8px;
-  right: 14px;
-  font-size: 0.66rem;
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-type,
+.hljs-doctag,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-variable.language_ {
+  color: var(--ink);
   font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--muted);
-  pointer-events: none;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--accent);
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--ink);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-params,
+.hljs-meta,
+.hljs-operator,
+.hljs-punctuation,
+.hljs-subst,
+.hljs-link,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--ink-soft);
+}
+
+.hljs-deletion {
+  color: var(--danger);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
 }
 
 /* ---------- Blockquote ---------- */
 
 blockquote {
-  position: relative;
   margin-inline: 0;
-  padding: 16px 20px 16px 44px;
-  background: var(--quote-tint);
-  border-radius: var(--r-md);
+  padding-left: 1.2em;
+  border-left: 2px solid var(--rule-strong);
   color: var(--ink-soft);
-}
-
-blockquote::before {
-  content: "\201C";
-  position: absolute;
-  top: 0.16em;
-  left: 14px;
-  font-size: 2.4rem;
-  line-height: 1;
-  color: color-mix(in oklch, var(--accent) 42%, transparent);
-  pointer-events: none;
 }
 
 blockquote > :last-child {
   margin-bottom: 0;
 }
 
-blockquote p {
-  font-size: 0.98rem;
-}
-
 /* ---------- Tables ---------- */
 
-/*
- * The scroll viewport runs edge to edge on the sheet while its inner padding
- * keeps the frame aligned with the text, so a wide table can be dragged all
- * the way into the margin instead of stopping short of it.
- */
 .table-scroll {
-  box-sizing: border-box;
-  width: calc(100% + 2 * var(--pad-inline));
-  max-width: none;
-  margin-left: calc(0px - var(--pad-inline));
-  margin-right: calc(0px - var(--pad-inline));
-  padding-inline: var(--pad-inline);
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
 .table-scroll::-webkit-scrollbar {
   display: none;
-  width: 0;
-  height: 0;
 }
 
 /*
- * max-content would size the frame as if no cell ever wrapped, which turns a
- * table of long prose cells into a 2500px horizontal scroll. Capping at 100%
- * lets cells wrap and fill the available width instead; a table whose
- * min-content genuinely exceeds the pane still overflows and stays scrollable,
- * because a box cannot be squeezed below its min-content width.
+ * Capped at 100% so long prose cells wrap instead of turning the table into a
+ * horizontal scroll; a table whose min-content still exceeds the column
+ * overflows and stays scrollable.
  */
 .table-frame {
   width: max-content;
   min-width: 100%;
   max-width: 100%;
-  overflow: hidden;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--rule);
-  background: var(--paper);
 }
 
-.table-scroll table {
+table {
   width: 100%;
-  table-layout: auto;
   border-collapse: collapse;
-  margin-bottom: 0;
-  background: transparent;
+  font-size: 0.9rem;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 th,
 td {
   text-align: left;
-  padding: 11px 16px;
+  padding: 0.55em 1em 0.55em 0;
   vertical-align: top;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  border-bottom: 1px solid var(--rule);
+}
+
+th:last-child,
+td:last-child {
+  padding-right: 0;
+}
+
+th {
+  font-weight: 600;
+  border-bottom-color: var(--rule-strong);
 }
 
 /*
  * cmark-gfm carries column alignment as an `align` attribute. That is only a
- * presentational hint, so it loses to the author-level rule above and has to be
- * restated here or every `:-:` and `--:` column silently renders left-aligned.
+ * presentational hint, so it loses to the rule above and has to be restated
+ * here or every `:-:` and `--:` column silently renders left-aligned.
  */
 th[align="center"],
 td[align="center"] {
@@ -452,48 +399,20 @@ td[align="right"] {
   text-align: right;
 }
 
-/*
- * Header as a tracked label row plus a single strong rule: a filled header
- * band on warm paper reads as a disabled control, not as structure.
- */
-thead th {
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1.5;
-  letter-spacing: 0.075em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-  border-bottom: 1px solid var(--rule-strong);
-}
-
-tbody td {
-  font-size: 0.94rem;
-  line-height: 1.6;
-}
-
-tbody tr + tr td {
-  border-top: 1px solid var(--rule);
-}
-
-tbody tr:nth-child(even) {
-  background: var(--row-tint);
-}
-
 /* ---------- Lists ---------- */
 
 ul,
 ol {
-  padding-left: 1.4rem;
+  padding-left: 1.3em;
 }
 
 li + li {
-  margin-top: 0.3rem;
+  margin-top: 0.25em;
 }
 
 /* Loose lists wrap items in <p>; keep that from doubling the rhythm. */
 li > p {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4em;
 }
 
 li > p:last-child {
@@ -502,18 +421,12 @@ li > p:last-child {
 
 li > ul,
 li > ol {
-  margin-top: 0.3rem;
+  margin-top: 0.25em;
   margin-bottom: 0;
 }
 
-ul > li::marker {
-  color: color-mix(in oklch, var(--accent) 62%, transparent);
-}
-
-ol > li::marker {
+li::marker {
   color: var(--muted);
-  font-size: 0.88em;
-  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -523,38 +436,36 @@ ol > li::marker {
  */
 li:has(> input[type="checkbox"]) {
   list-style: none;
-  margin-left: -1.4rem;
-  padding-left: 1.4rem;
+  margin-left: -1.3em;
 }
 
 li > input[type="checkbox"] {
   appearance: none;
-  width: 0.95em;
-  height: 0.95em;
-  margin: 0 0.45em 0 0;
+  width: 0.85em;
+  height: 0.85em;
+  margin: 0 0.5em 0 0;
   position: relative;
-  top: 0.06em;
+  top: 0.08em;
   box-sizing: border-box;
   border: 1px solid var(--rule-strong);
-  border-radius: 4px;
-  background: var(--paper);
-  vertical-align: baseline;
+  border-radius: 3px;
+  background: transparent;
 }
 
 li > input[type="checkbox"]:checked {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
 }
 
 li > input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  left: 0.27em;
-  top: 0.08em;
-  width: 0.24em;
-  height: 0.46em;
-  border: solid var(--on-accent);
-  border-width: 0 1.6px 1.6px 0;
+  left: 0.25em;
+  top: 0.06em;
+  width: 0.2em;
+  height: 0.42em;
+  border: solid var(--paper);
+  border-width: 0 1.5px 1.5px 0;
   transform: rotate(42deg);
 }
 
@@ -566,20 +477,16 @@ li:has(> input[type="checkbox"]:checked) {
 
 .footnote-ref a {
   text-decoration: none;
-  font-variant-numeric: tabular-nums;
+  color: var(--accent);
   padding: 0 0.1em;
 }
 
 .footnotes {
-  margin-top: 2.6rem;
+  margin-top: 3.5rem;
   padding-top: 1.2rem;
   border-top: 1px solid var(--rule);
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--ink-soft);
-}
-
-.footnotes ol {
-  padding-left: 1.5rem;
 }
 
 .footnotes li {
@@ -587,41 +494,34 @@ li:has(> input[type="checkbox"]:checked) {
 }
 
 .footnotes p {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 
 .footnote-backref {
   text-decoration: none;
-  margin-left: 0.35em;
+  margin-left: 0.3em;
 }
 
 /* ---------- Rules, media, diagrams ---------- */
 
 hr {
   border: none;
+  width: 4rem;
   height: 1px;
-  background: var(--rule);
-  margin: 2.4rem 0;
+  background: var(--rule-strong);
+  margin: 3rem auto;
 }
 
 img {
-  display: inline-block;
-  vertical-align: middle;
   max-width: 100%;
   height: auto;
-  border-radius: var(--r-lg);
-  outline: 1px solid var(--media-ring);
-  outline-offset: -1px;
+  vertical-align: middle;
+  border-radius: 3px;
 }
 
-.diagram-surface,
 .mermaid {
   display: block;
   overflow-x: auto;
-  padding: 18px 20px;
-  border-radius: var(--r-lg);
-  background: var(--paper);
-  border: 1px solid var(--rule);
   text-align: center;
 }
 
@@ -634,20 +534,19 @@ img {
   white-space: pre-wrap;
   text-align: left;
   font-family: var(--type-mono);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--danger);
 }
 
 /* ---------- Responsive & motion ---------- */
 
-@media (max-width: 900px) {
-  .canvas {
-    padding: 10px 10px 24px;
+@media (max-width: 720px) {
+  html {
+    font-size: 17px;
   }
 
-  .document {
-    border-radius: var(--r-lg);
-    padding: 26px var(--pad-inline) 32px;
+  .canvas {
+    padding: 40px 24px 80px;
   }
 }
 
@@ -657,6 +556,6 @@ img {
   }
 
   a {
-    transition-duration: 0ms;
+    transition: none;
   }
 }
