@@ -335,6 +335,19 @@
 
     isScrollTrackingBound = true;
     window.addEventListener("scroll", reportScroll, { passive: true });
+
+    /*
+     * The cached offsets go stale whenever the text reflows after a render: a
+     * resized window or sidebar, an image that finishes loading, a diagram
+     * redrawn for a new scheme. All of them change the article's height.
+     */
+    const article = document.querySelector(".document");
+    if (article && window.ResizeObserver) {
+      new ResizeObserver(() => {
+        buildHeadingIndex();
+        reportScroll();
+      }).observe(article);
+    }
   }
 
   async function renderMermaid(nodes) {
